@@ -159,6 +159,7 @@ public class Universal {
      * Shutdown.
      */
     public void shutdown() {
+        PlayerManager.get().flushOnlineLeaves();
         DatabaseManager.get().shutdown();
 
         if (mi.getBoolean(mi.getConfig(), "DetailedDisableMessage", true)) {
@@ -348,6 +349,8 @@ public class Universal {
             getIps().remove(name);
             getIps().put(name, ip);
         }
+
+        PlayerManager.get().recordJoin(name, uuid, ip);
 
         InterimData interimData = PunishmentManager.get().load(name, uuid, ip);
 

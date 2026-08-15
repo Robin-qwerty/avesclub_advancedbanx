@@ -17,7 +17,7 @@ public class BackendLinkMain extends JavaPlugin {
     private static BackendLinkMain instance;
     public static final String CHANNEL = "advancedban:command";
     private static final List<String> COMMANDS = Arrays.asList(
-        "ban", "tempban", "banip", "tempipban",
+        "ban", "tempban", "punish", "banip", "tempipban",
         "mute", "tempmute", "warn", "tempwarn", "kick",
         "unban", "unmute"
     );
@@ -54,10 +54,10 @@ public class BackendLinkMain extends JavaPlugin {
         
         getLogger().info("Avesban BackendLink enabled! Commands will be forwarded to Velocity proxy.");
 
-        // Keep mute state fairly fresh for online players.
-        Bukkit.getScheduler().runTaskTimer(this, () -> {
+        // Keep mute state fairly fresh for online players (Folia: global + per-entity region).
+        BackendLinkScheduler.scheduleRepeating(this, () -> {
             for (Player player : Bukkit.getOnlinePlayers()) {
-                requestPunishmentStatus(player);
+                BackendLinkScheduler.runOnPlayerRegion(this, player, () -> requestPunishmentStatus(player), 0L);
             }
         }, 40L, 100L);
     }

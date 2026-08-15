@@ -64,6 +64,10 @@ public class PunishmentProcessor implements Consumer<Command.CommandInput> {
         else if (reason.isEmpty())
             reason = null;
 
+        if (reason == null && !timeTemplate.isEmpty()) {
+            reason = "@" + timeTemplate;
+        }
+
         // check if punishment of this type is already active (checking both network-wide and server-specific)
         if (alreadyPunished(target, type, targetServer)) {
             MessageManager.sendMessage(input.getSender(), type.getBasic().getName() + ".AlreadyDone",

@@ -33,6 +33,7 @@ public class DatabaseManager {
 
     private HikariDataSource dataSource;
     private boolean useMySQL;
+    private volatile boolean closed = false;
 
     private RowSetFactory factory;
     
@@ -109,6 +110,7 @@ public class DatabaseManager {
 
         executeStatement(SQLQuery.CREATE_TABLE_PUNISHMENT);
         executeStatement(SQLQuery.CREATE_TABLE_PUNISHMENT_HISTORY);
+        executeStatement(SQLQuery.CREATE_TABLE_PLAYERS);
         if (useMySQL) {
             // Fix LONG columns to BIGINT if they exist (for existing databases)
             fixLongColumnsToBigInt();
@@ -274,6 +276,10 @@ public class DatabaseManager {
             ensureMySqlIndex(connection, "PunishmentHistory", "idx_history_uuid", "uuid");
             ensureMySqlIndex(connection, "PunishmentHistory", "idx_history_uuid_calculation", "uuid", "calculation");
             ensureMySqlIndex(connection, "PunishmentHistory", "idx_history_start", "start");
+
+            ensureMySqlIndex(connection, "Players", "idx_players_name", "name");
+            ensureMySqlIndex(connection, "Players", "idx_players_lastIp", "lastIp");
+            ensureMySqlIndex(connection, "Players", "idx_players_lastJoin", "lastJoin");
             
             Universal.get().getLogger().info("MySQL indexes creation completed.");
         } catch (SQLException ex) {
@@ -488,6 +494,11 @@ public class DatabaseManager {
      * Shuts down the HSQLDB if used.
      */
     public void shutdown() {
+        closed = true;
+        if (dataSource == null) {
+            return;
+        }
+
         if (!useMySQL) {
             try(Connection connection = dataSource.getConnection(); final PreparedStatement statement = connection.prepareStatement("SHUTDOWN")){
                 statement.execute();
@@ -498,6 +509,15 @@ public class DatabaseManager {
         }
 
         dataSource.close();
+    }
+
+    /**
+     * Whether the connection pool is still usable.
+     *
+     * @return true if statements can still be executed
+     */
+    public boolean isAvailable() {
+        return !closed && dataSource != null && !dataSource.isClosed();
     }
     
     private CachedRowSet createCachedRowSet() throws SQLException {
@@ -518,6 +538,53 @@ public class DatabaseManager {
     }
 
     /**
+     * Execute an update statement and return the number of affected rows.
+     *
+     * @param sql        the sql statement
+     * @param parameters the parameters
+     * @return affected row count, or 0 on failure
+     */
+    public int executeUpdate(SQLQuery sql, Object... parameters) {
+        return executeUpdate(sql.toString(), parameters);
+    }
+
+    private int executeUpdate(String sql, Object... parameters) {
+        if (!isAvailable()) {
+            return 0;
+        }
+
+        try (Connection connection = dataSource.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            for (int i = 0; i < parameters.length; i++) {
+                statement.setObject(i + 1, parameters[i]);
+            }
+            return statement.executeUpdate();
+        } catch (SQLException ex) {
+            if (isClosedPoolError(ex)) {
+                return 0;
+            }
+            Universal.get().getLogger().severe(
+                    "An unexpected error has occurred executing an update in the database\n"
+                            + "SQL Error: " + ex.getMessage() + "\n"
+                            + "SQL State: " + ex.getSQLState() + "\n"
+                            + "Error Code: " + ex.getErrorCode()
+            );
+            Universal.get().getLogger().fine("Query: \n" + sql);
+            Universal.get().debugSqlException(ex);
+        } catch (NullPointerException ex) {
+            if (closed) {
+                return 0;
+            }
+            Universal.get().getLogger().severe(
+                    "An unexpected error has occurred connecting to the database\n"
+                            + "The database connection pool may not be initialized properly."
+            );
+            Universal.get().debugException(ex);
+        }
+        return 0;
+    }
+
+    /**
      * Execute a sql statement.
      *
      * @param sql        the sql statement
@@ -533,8 +600,7 @@ public class DatabaseManager {
     }
 
     private synchronized ResultSet executeStatement(String sql, boolean result, Object... parameters) {
-    	if (dataSource == null) {
-    		Universal.get().getLogger().severe("ERROR: DataSource is null! Database was not initialized properly.");
+    	if (!isAvailable()) {
     		return null;
     	}
     	
@@ -551,6 +617,9 @@ public class DatabaseManager {
     		}
    			statement.execute();
     	} catch (SQLException ex) {
+    		if (isClosedPoolError(ex)) {
+    			return null;
+    		}
     		Universal.get().getLogger().severe(
    					"An unexpected error has occurred executing a statement in the database\n"
    							+ "SQL Error: " + ex.getMessage() + "\n"
@@ -563,6 +632,9 @@ public class DatabaseManager {
     		Universal.get().getLogger().fine("Query: \n" + sql);
     		Universal.get().debugSqlException(ex);
        	} catch (NullPointerException ex) {
+            if (closed) {
+                return null;
+            }
             Universal.get().getLogger().severe(
                     "An unexpected error has occurred connecting to the database\n"
                             + "The database connection pool may not be initialized properly.\n"
@@ -576,13 +648,21 @@ public class DatabaseManager {
         return null;
     }
 
+    private boolean isClosedPoolError(SQLException ex) {
+        if (closed || dataSource == null || dataSource.isClosed()) {
+            return true;
+        }
+        String message = ex.getMessage();
+        return message != null && message.toLowerCase().contains("has been closed");
+    }
+
     /**
      * Check whether there is a valid connection to the database.
      *
      * @return whether there is a valid connection
      */
     public boolean isConnectionValid() {
-        return dataSource.isRunning();
+        return isAvailable() && dataSource.isRunning();
     }
 
     /**

@@ -1,6 +1,5 @@
 package net.hnt8.advancedban.backendlink;
 
-import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -30,7 +29,8 @@ public class BackendPunishmentListener implements Listener, PluginMessageListene
     @EventHandler
     public void onJoin(PlayerJoinEvent event) {
         // Delay one tick so plugin messaging is fully available for this connection.
-        Bukkit.getScheduler().runTaskLater(plugin, () -> plugin.requestPunishmentStatus(event.getPlayer()), 1L);
+        BackendLinkScheduler.runOnPlayerRegion(plugin, event.getPlayer(),
+                () -> plugin.requestPunishmentStatus(event.getPlayer()), 1L);
     }
 
     @EventHandler
@@ -43,8 +43,9 @@ public class BackendPunishmentListener implements Listener, PluginMessageListene
         String key = event.getPlayer().getName().toLowerCase();
         if (Boolean.TRUE.equals(mutedByName.get(key))) {
             event.setCancelled(true);
-            Bukkit.getScheduler().runTask(plugin,
-                    () -> event.getPlayer().sendMessage("§cYou are muted and cannot chat right now."));
+            Player p = event.getPlayer();
+            BackendLinkScheduler.runOnPlayerRegion(plugin, p,
+                    () -> p.sendMessage("§cYou are muted and cannot chat right now."), 0L);
         }
     }
 

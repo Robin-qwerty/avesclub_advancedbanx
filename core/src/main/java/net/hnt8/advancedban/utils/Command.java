@@ -4,6 +4,7 @@ import net.hnt8.advancedban.MethodInterface;
 import net.hnt8.advancedban.Universal;
 import net.hnt8.advancedban.manager.DatabaseManager;
 import net.hnt8.advancedban.manager.MessageManager;
+import net.hnt8.advancedban.manager.PlayerManager;
 import net.hnt8.advancedban.manager.PunishmentManager;
 import net.hnt8.advancedban.manager.UUIDManager;
 import net.hnt8.advancedban.utils.commands.ListProcessor;
@@ -19,8 +20,10 @@ import net.hnt8.advancedban.utils.tabcompletion.*;
 import org.apache.commons.lang3.ArrayUtils;
 
 import java.util.Calendar;
+import java.util.Date;
 import java.util.GregorianCalendar;
 import java.util.List;
+import java.text.SimpleDateFormat;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
@@ -41,7 +44,7 @@ public enum Command {
             new PunishmentTabCompleter(true),
             new PunishmentProcessor(PunishmentType.TEMP_BAN),
             PunishmentType.TEMP_BAN.getConfSection("Usage"),
-            "tempban"),
+            "tempban", "punish"),
 
     IP_BAN(
             PunishmentType.IP_BAN.getPerms(),
@@ -450,6 +453,38 @@ public enum Command {
             "Check.Usage",
             "check"),
 
+    IP_CHECK("ab.ipcheck",
+            "^(?:[0-9]{1,3}\\.){3}[0-9]{1,3}$",
+            new BasicTabCompleter("<IP>"),
+            input -> {
+                String ip = input.getPrimary();
+                input.next();
+
+                List<TrackedPlayer> players = PlayerManager.get().findByIp(ip);
+                if (players.isEmpty()) {
+                    MessageManager.sendMessage(input.getSender(), "IpCheck.NoEntries", true, "IP", ip);
+                    return;
+                }
+
+                MethodInterface mi = Universal.get().getMethods();
+                SimpleDateFormat format = new SimpleDateFormat(mi.getString(mi.getConfig(),
+                        "DateFormat", "dd.MM.yyyy-HH:mm"));
+
+                MessageManager.sendMessage(input.getSender(), "IpCheck.Header", true,
+                        "IP", ip, "COUNT", players.size() + "");
+
+                for (TrackedPlayer player : players) {
+                    MessageManager.sendMessage(input.getSender(), "IpCheck.Entry", false,
+                            "NAME", player.getName() != null ? player.getName() : "unknown",
+                            "UUID", player.getUuid() != null ? player.getUuid() : "unknown",
+                            "LAST_JOIN", formatPlayerTimestamp(format, player.getLastJoin()),
+                            "LAST_LEAVE", formatPlayerTimestamp(format, player.getLastLeave()),
+                            "FIRST_SEEN", formatPlayerTimestamp(format, player.getFirstSeen()));
+                }
+            },
+            "IpCheck.Usage",
+            "ipcheck"),
+
     SYSTEM_PREFERENCES("ab.systemprefs",
             ".*",
             null,
@@ -495,6 +530,8 @@ public enum Command {
                             mi.sendMessage(sender, "<dark_gray>»</dark_gray> <gray>Ban a user by IP</gray>");
                             mi.sendMessage(sender, "<red>/tempban [Name] [Xmo/Xd/Xh/Xm/Xs/#TimeLayout] [Reason/@Layout]</red>");
                             mi.sendMessage(sender, "<dark_gray>»</dark_gray> <gray>Ban a user temporary</gray>");
+                            mi.sendMessage(sender, "<red>/punish [Name] [Xmo/Xd/Xh/Xm/Xs/#TimeLayout] [Reason/@Layout]</red>");
+                            mi.sendMessage(sender, "<dark_gray>»</dark_gray> <gray>Alias for /tempban</gray>");
                             mi.sendMessage(sender, "<red>/mute [Name] [Reason/@Layout]</red>");
                             mi.sendMessage(sender, "<dark_gray>»</dark_gray> <gray>Mute a user permanently</gray>");
                             mi.sendMessage(sender, "<red>/tempmute [Name] [Xmo/Xd/Xh/Xm/Xs/#TimeLayout] [Reason/@Layout]</red>");
@@ -529,6 +566,8 @@ public enum Command {
                             mi.sendMessage(sender, "<dark_gray>»</dark_gray> <gray>See your or a users notes</gray>");
                             mi.sendMessage(sender, "<red>/check [Name]</red>");
                             mi.sendMessage(sender, "<dark_gray>»</dark_gray> <gray>Get all information about a user</gray>");
+                            mi.sendMessage(sender, "<red>/ipcheck [IP]</red>");
+                            mi.sendMessage(sender, "<dark_gray>»</dark_gray> <gray>See all players that used an IP</gray>");
                             mi.sendMessage(sender, "<red>/AdvancedBan <reload/help></red>");
                             mi.sendMessage(sender, "<dark_gray>»</dark_gray> <gray>Reloads the plugin or shows help page</gray>");
                             mi.sendMessage(sender, "");
@@ -603,6 +642,10 @@ public enum Command {
             }
         }
         return null;
+    }
+
+    private static String formatPlayerTimestamp(SimpleDateFormat format, long timestamp) {
+        return timestamp <= 0 ? "never" : format.format(new Date(timestamp));
     }
 
     public String getPermission() {

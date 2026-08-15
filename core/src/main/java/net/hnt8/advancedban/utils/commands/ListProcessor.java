@@ -11,6 +11,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import static net.hnt8.advancedban.utils.CommandUtils.processName;
 
@@ -44,20 +45,22 @@ public class ListProcessor implements Consumer<Command.CommandInput> {
         }
 
         MethodInterface mi = Universal.get().getMethods();
-        final List<Punishment> punishments = listSupplier.apply(target);
+        final List<Punishment> punishments = listSupplier.apply(target).stream()
+                .filter(p -> p != null)
+                .collect(Collectors.toList());
         if (punishments.isEmpty()) {
             MessageManager.sendMessage(input.getSender(), config + ".NoEntries",
                     true, "NAME", name);
             return;
         }
 
-        punishments
-                .stream()
-                .filter(punishment -> punishment.isExpired() && !history)
-                .forEach(punishment -> {
-                    punishment.delete();
-                    punishments.remove(punishment);
-                });
+        List<Punishment> toRemove = punishments.stream()
+                .filter(punishment -> punishment != null && punishment.isExpired() && !history)
+                .collect(Collectors.toList());
+        for (Punishment punishment : toRemove) {
+            punishment.delete();
+            punishments.remove(punishment);
+        }
 
         int page = input.hasNext() ? Integer.parseInt(input.getPrimary()) : 1;
         if (punishments.size() / 6.0 + 1 <= page) {

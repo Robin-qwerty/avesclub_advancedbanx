@@ -52,7 +52,7 @@ Ipban:
   IpNotCashed: "<red>There is no saved IP for <italic>%NAME%!</italic></red>"
 
 Tempban:
-  Usage: "<red>Usage</red> <dark_gray>»</dark_gray> <gray><italic>/tempban (-s) [Name] [Xmo/Xd/Xh/Xm/Xs/#TimeLayout] [Reason/@Layout] [Server]</italic></gray>"
+  Usage: "<red>Usage</red> <dark_gray>»</dark_gray> <gray><italic>/tempban (-s) [Name] [Xmo/Xd/Xh/Xm/Xs/#TimeLayout] [Reason/@Layout] [Server]</italic></gray> <dark_gray>(alias: /punish)</dark_gray>"
   MaxDuration: "<red>You are not able to ban more than %MAX%sec</red>"
   Layout:
     - '%PREFIX% <gray>Temporarily banned%SERVER_INFO%</gray>'
@@ -321,3 +321,9 @@ Check:
   NotFound: "<red>Sorry we have not been able to find %NAME%"
   Cached: "<green><italic>cached<italic></green>"
   NotCached: "<red><italic>not cached</italic></red>"
+
+IpCheck:
+  Usage: "<red>Usage</red> <dark_gray>»</dark_gray> <gray><italic>/ipcheck [IP]</italic></gray>"
+  Header: "<gray>Players using IP <yellow>%IP%</yellow> <dark_gray>(%COUNT% found)</dark_gray></gray>"
+  Entry: "<gray><yellow>%NAME%</yellow> <dark_gray>|</dark_gray> UUID: %UUID% <dark_gray>|</dark_gray> First seen: %FIRST_SEEN% <dark_gray>|</dark_gray> Last join: %LAST_JOIN% <dark_gray>|</dark_gray> Last leave: %LAST_LEAVE%</gray>"
+  NoEntries: "<red>No tracked players found for IP <italic>%IP%</italic></red>"

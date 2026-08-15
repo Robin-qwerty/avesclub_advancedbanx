@@ -13,6 +13,7 @@ commands:
     description: Ban a user permanently
   tempban:
     description: Ban a user temporarily
+    aliases: [punish]
   ipban:
     description: Ban a user by IP
     aliases: [banip, ban-ip]
@@ -41,6 +42,8 @@ commands:
     description: See your or a user''s notes
   check:
     description: Get all information about a user
+  ipcheck:
+    description: See all players that used an IP address
   systemPrefs:
     description: Displays System-Preferences for setting up the plugin
   unwarn:

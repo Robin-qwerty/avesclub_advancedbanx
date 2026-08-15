@@ -135,6 +135,40 @@ public enum SQLQuery {
     SELECT_ALL_PUNISHMENTS_HISTORY_LIMIT(
             "SELECT * FROM `PunishmentHistory` ORDER BY `start` DESC LIMIT ?",
             "SELECT * FROM PunishmentHistory ORDER BY start DESC LIMIT ?"
+    ),
+    CREATE_TABLE_PLAYERS(
+            "CREATE TABLE IF NOT EXISTS `Players` (" +
+            "`uuid` VARCHAR(35) NOT NULL," +
+            "`name` VARCHAR(16) NULL DEFAULT NULL," +
+            "`lastIp` VARCHAR(45) NULL DEFAULT NULL," +
+            "`lastJoin` BIGINT NULL DEFAULT NULL," +
+            "`lastLeave` BIGINT NULL DEFAULT NULL," +
+            "`firstSeen` BIGINT NULL DEFAULT NULL," +
+            "PRIMARY KEY (`uuid`))",
+
+            "CREATE TABLE IF NOT EXISTS Players (" +
+            "uuid VARCHAR(35) NOT NULL PRIMARY KEY," +
+            "name VARCHAR(16)," +
+            "lastIp VARCHAR(45)," +
+            "lastJoin BIGINT," +
+            "lastLeave BIGINT," +
+            "firstSeen BIGINT)"
+    ),
+    INSERT_PLAYER(
+            "INSERT INTO `Players` (`uuid`, `name`, `lastIp`, `lastJoin`, `firstSeen`) VALUES (?, ?, ?, ?, ?)",
+            "INSERT INTO Players (uuid, name, lastIp, lastJoin, firstSeen) VALUES (?, ?, ?, ?, ?)"
+    ),
+    UPDATE_PLAYER_JOIN(
+            "UPDATE `Players` SET `name` = ?, `lastIp` = ?, `lastJoin` = ? WHERE `uuid` = ?",
+            "UPDATE Players SET name = ?, lastIp = ?, lastJoin = ? WHERE uuid = ?"
+    ),
+    UPDATE_PLAYER_LEAVE(
+            "UPDATE `Players` SET `lastLeave` = ? WHERE `uuid` = ?",
+            "UPDATE Players SET lastLeave = ? WHERE uuid = ?"
+    ),
+    SELECT_PLAYERS_BY_IP(
+            "SELECT * FROM `Players` WHERE `lastIp` = ? ORDER BY `lastJoin` DESC",
+            "SELECT * FROM Players WHERE lastIp = ? ORDER BY lastJoin DESC"
     );
 
     private String mysql;

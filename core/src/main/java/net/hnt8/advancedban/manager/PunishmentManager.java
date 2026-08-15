@@ -89,6 +89,7 @@ public class PunishmentManager {
         name = name.toLowerCase();
         String ip = Universal.get().getIps().get(name);
         String uuid = UUIDManager.get().getUUID(name);
+        PlayerManager.get().recordLeave(name, uuid);
         cached.remove(name);
         cached.remove(uuid);
         cached.remove(ip);
@@ -163,10 +164,11 @@ public class PunishmentManager {
         List<Punishment> ptList = new ArrayList<>();
 
         ResultSet rs = DatabaseManager.get().executeResultStatement(sqlQuery, parameters);
+        if (rs == null) return ptList;
         try {
             while (rs.next()) {
                 Punishment punishment = getPunishmentFromResultSet(rs);
-                ptList.add(punishment);
+                if (punishment != null) ptList.add(punishment);
             }
             rs.close();
         } catch (SQLException ex) {

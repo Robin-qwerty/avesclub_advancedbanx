@@ -16,6 +16,7 @@ commands:
     description: Temporarily ban a player
     usage: /<command> [player] [duration] [reason]
     permission: ab.ban.temp
+    aliases: [punish]
   banip:
     description: Ban an IP address
     usage: /<command> [player/IP] [reason]
