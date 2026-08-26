@@ -311,6 +311,27 @@ public class Universal {
     }
 
     /**
+     * Whether this player may join while the database cannot be loaded.
+     */
+    public boolean isLockdownExempt(String name, Object connectingPlayer) {
+        if (isExemptPlayer(name)) {
+            return true;
+        }
+        List<String> lockdownExempt = getMethods().getStringList(getMethods().getConfig(), "LockdownExemptPlayers");
+        if (lockdownExempt != null) {
+            for (String str : lockdownExempt) {
+                if (name.equalsIgnoreCase(str)) {
+                    return true;
+                }
+            }
+        }
+        if (connectingPlayer != null && hasPerms(connectingPlayer, "ab.lockdown.bypass")) {
+            return true;
+        }
+        return mi.getOfflinePermissionPlayer(name).hasPermission("ab.lockdown.bypass");
+    }
+
+    /**
      * Broadcast leoko boolean.
      *
      * @return the boolean
@@ -337,10 +358,14 @@ public class Universal {
      * @return the string
      */
     public String callConnection(String name, String ip) {
-        return callConnection(name, ip, null);
+        return callConnection(name, ip, null, null);
     }
     
     public String callConnection(String name, String ip, String targetServer) {
+        return callConnection(name, ip, targetServer, null);
+    }
+
+    public String callConnection(String name, String ip, String targetServer, Object connectingPlayer) {
         name = name.toLowerCase();
         String uuid = UUIDManager.get().getUUID(name);
         if (uuid == null) return "[AdvancedBan] Failed to fetch your UUID";
@@ -355,7 +380,13 @@ public class Universal {
         InterimData interimData = PunishmentManager.get().load(name, uuid, ip);
 
         if (interimData == null) {
+            getLogger().severe("Failed to load player data for " + name + " (uuid=" + uuid + "). This is a database error, not a ban.");
+            if (isLockdownExempt(name, connectingPlayer)) {
+                getLogger().warning("Allowing " + name + " to join despite the database error (lockdown exempt).");
+                return null;
+            }
             if (getMethods().getBoolean(mi.getConfig(), "LockdownOnError", true)) {
+                getLogger().severe("Kicking " + name + " because LockdownOnError is enabled. Check MySQL connectivity if this keeps happening.");
                 return "[AdvancedBan] Failed to load player data!";
             } else {
                 return null;

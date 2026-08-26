@@ -24,8 +24,12 @@ public class CleanTabCompleter implements MutableTabCompleter {
         }
 
         if(args.length > 0)
-            suggestions.removeIf(s -> !s.startsWith(args[args.length - 1]));
+            suggestions.removeIf(s -> !startsWithIgnoreCase(s, args[args.length - 1]));
 
         return suggestions;
+    }
+
+    static boolean startsWithIgnoreCase(String value, String prefix) {
+        return value != null && prefix != null && value.regionMatches(true, 0, prefix, 0, prefix.length());
     }
 }

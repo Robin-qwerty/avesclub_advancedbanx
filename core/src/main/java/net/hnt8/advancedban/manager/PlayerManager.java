@@ -31,6 +31,7 @@ public class PlayerManager {
         int updated = DatabaseManager.get().executeUpdate(
                 SQLQuery.UPDATE_PLAYER_JOIN, name, ip, now, uuid);
 
+        // 0 = no existing row, -1 = query failed (do not try INSERT)
         if (updated == 0) {
             DatabaseManager.get().executeStatement(
                     SQLQuery.INSERT_PLAYER, uuid, name, ip, now, now);

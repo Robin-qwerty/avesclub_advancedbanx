@@ -32,10 +32,16 @@ public class DynamicDataSource {
             config.setJdbcUrl("jdbc:mysql://" + ip + ":" + port + "/" + dbName + "?"+properties);
             config.setUsername(usrName);
             config.setPassword(password);
-            // Set connection timeout and validation
-            config.setConnectionTimeout(5000); // 5 seconds
-            config.setValidationTimeout(3000); // 3 seconds
+            config.setMaximumPoolSize(10);
+            config.setMinimumIdle(2);
+            config.setConnectionTimeout(10000);
+            config.setValidationTimeout(3000);
             config.setConnectionTestQuery("SELECT 1");
+            // Replace idle connections before MySQL wait_timeout drops them.
+            config.setMaxLifetime(1800000);
+            config.setKeepaliveTime(300000);
+            config.setIdleTimeout(600000);
+            config.setLeakDetectionThreshold(60000);
         } else {
             // No need to worry about relocation because the maven-shade-plugin also changes strings
             String driverClassName = "org.hsqldb.jdbc.JDBCDriver";

@@ -58,9 +58,32 @@ public class PunishmentManager {
      * @return the interim data
      */
     public InterimData load(String name, String uuid, String ip) {
+        InterimData data = loadOnce(name, uuid, ip);
+        if (data == null && DatabaseManager.get().tryReconnect()) {
+            universal().getLogger().warning("Retrying player data load for " + name + " after reconnect...");
+            data = loadOnce(name, uuid, ip);
+        }
+        for (int attempt = 1; attempt < 3 && data == null; attempt++) {
+            if (!DatabaseManager.get().isAvailable()) {
+                break;
+            }
+            try {
+                Thread.sleep(150L * attempt);
+            } catch (InterruptedException ex) {
+                Thread.currentThread().interrupt();
+                break;
+            }
+            universal().getLogger().warning("Retrying player data load for " + name + " (attempt " + (attempt + 1) + "/3)");
+            data = loadOnce(name, uuid, ip);
+        }
+        return data;
+    }
+
+    private InterimData loadOnce(String name, String uuid, String ip) {
         Set<Punishment> punishments = new HashSet<>();
         Set<Punishment> history = new HashSet<>();
-        try (ResultSet resultsPunishments = DatabaseManager.get().executeResultStatement(SQLQuery.SELECT_USER_PUNISHMENTS_WITH_IP, uuid, ip); ResultSet resultsHistory = DatabaseManager.get().executeResultStatement(SQLQuery.SELECT_USER_PUNISHMENTS_HISTORY_WITH_IP, uuid, ip)) {
+        try (ResultSet resultsPunishments = DatabaseManager.get().executeResultStatement(SQLQuery.SELECT_USER_PUNISHMENTS_WITH_IP, uuid, ip);
+             ResultSet resultsHistory = DatabaseManager.get().executeResultStatement(SQLQuery.SELECT_USER_PUNISHMENTS_HISTORY_WITH_IP, uuid, ip)) {
             if (resultsHistory == null || resultsPunishments == null)
                 return null;
 

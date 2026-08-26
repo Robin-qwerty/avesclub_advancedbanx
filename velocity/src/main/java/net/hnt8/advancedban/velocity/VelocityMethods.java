@@ -194,6 +194,10 @@ public class VelocityMethods implements MethodInterface {
         if (!(player instanceof CommandSource)) {
             return;
         }
+        if (player instanceof Player && BedrockCompat.isBedrock((Player) player)) {
+            ((CommandSource) player).sendMessage(Component.text(BedrockCompat.toPlainText(msg)));
+            return;
+        }
         TextReplacementConfig replacementConfig = TextReplacementConfig.builder()
                 .matchLiteral("&")
                 .replacement("§")
@@ -228,8 +232,7 @@ public class VelocityMethods implements MethodInterface {
         if (target == null) {
             return;
         }
-        Component reasonComponent = MiniMessage.miniMessage().deserialize(reason.replace('§', '&'));
-        target.disconnect(reasonComponent);
+        target.disconnect(BedrockCompat.disconnectReason(target, reason));
     }
 
     @Override

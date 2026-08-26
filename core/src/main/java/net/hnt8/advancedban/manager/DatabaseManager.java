@@ -34,6 +34,9 @@ public class DatabaseManager {
     private HikariDataSource dataSource;
     private boolean useMySQL;
     private volatile boolean closed = false;
+    private final Object reconnectLock = new Object();
+    private volatile long lastReconnectAt;
+    private volatile boolean lastReconnectOk;
 
     private RowSetFactory factory;
     
@@ -519,8 +522,75 @@ public class DatabaseManager {
     public boolean isAvailable() {
         return !closed && dataSource != null && !dataSource.isClosed();
     }
+
+    /**
+     * Ping the database and, if that fails, rebuild the connection pool.
+     * Concurrent callers share one attempt (5s cooldown).
+     *
+     * @return true if the database is usable afterwards
+     */
+    public boolean tryReconnect() {
+        if (closed) {
+            return false;
+        }
+        synchronized (reconnectLock) {
+            long now = System.currentTimeMillis();
+            if (now - lastReconnectAt < 5000L) {
+                return lastReconnectOk && isAvailable();
+            }
+            lastReconnectAt = now;
+            lastReconnectOk = reconnectNow();
+            return lastReconnectOk;
+        }
+    }
+
+    private boolean reconnectNow() {
+        Universal.get().getLogger().warning("Database connection lost. Trying to reconnect...");
+        if (ping()) {
+            Universal.get().getLogger().info("Database connection is healthy again.");
+            return true;
+        }
+
+        HikariDataSource old = dataSource;
+        try {
+            HikariDataSource replacement = new DynamicDataSource(useMySQL).generateDataSource();
+            try (Connection connection = replacement.getConnection()) {
+                if (!connection.isValid(3)) {
+                    replacement.close();
+                    Universal.get().getLogger().severe("Database reconnect failed: new connection is not valid.");
+                    return false;
+                }
+            }
+            dataSource = replacement;
+            if (old != null && !old.isClosed()) {
+                try {
+                    old.close();
+                } catch (Exception ignored) {
+                }
+            }
+            Universal.get().getLogger().info("Database reconnect succeeded.");
+            return true;
+        } catch (Exception ex) {
+            Universal.get().getLogger().severe("Database reconnect failed: " + ex.getMessage());
+            Universal.get().debugException(ex);
+            return false;
+        }
+    }
+
+    private boolean ping() {
+        if (!isAvailable()) {
+            return false;
+        }
+        try (Connection connection = dataSource.getConnection();
+             PreparedStatement statement = connection.prepareStatement("SELECT 1");
+             ResultSet rs = statement.executeQuery()) {
+            return rs.next();
+        } catch (SQLException ex) {
+            return false;
+        }
+    }
     
-    private CachedRowSet createCachedRowSet() throws SQLException {
+    private synchronized CachedRowSet createCachedRowSet() throws SQLException {
     	if (factory == null) {
     		factory = RowSetProvider.newFactory();
     	}
@@ -550,7 +620,7 @@ public class DatabaseManager {
 
     private int executeUpdate(String sql, Object... parameters) {
         if (!isAvailable()) {
-            return 0;
+            return closed ? 0 : -1;
         }
 
         try (Connection connection = dataSource.getConnection();
@@ -581,7 +651,7 @@ public class DatabaseManager {
             );
             Universal.get().debugException(ex);
         }
-        return 0;
+        return -1;
     }
 
     /**
@@ -599,8 +669,11 @@ public class DatabaseManager {
         return executeStatement(sql.toString(), result, parameters);
     }
 
-    private synchronized ResultSet executeStatement(String sql, boolean result, Object... parameters) {
+    private ResultSet executeStatement(String sql, boolean result, Object... parameters) {
     	if (!isAvailable()) {
+    		if (!closed) {
+    			Universal.get().getLogger().severe("Database is unavailable while executing a statement.");
+    		}
     		return null;
     	}
     	
@@ -649,11 +722,7 @@ public class DatabaseManager {
     }
 
     private boolean isClosedPoolError(SQLException ex) {
-        if (closed || dataSource == null || dataSource.isClosed()) {
-            return true;
-        }
-        String message = ex.getMessage();
-        return message != null && message.toLowerCase().contains("has been closed");
+        return closed || dataSource == null || dataSource.isClosed();
     }
 
     /**

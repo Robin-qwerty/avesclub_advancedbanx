@@ -8,8 +8,7 @@ import com.velocitypowered.api.proxy.Player;
 import net.hnt8.advancedban.Universal;
 import net.hnt8.advancedban.manager.PunishmentManager;
 import net.hnt8.advancedban.manager.UUIDManager;
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.minimessage.MiniMessage;
+import net.hnt8.advancedban.velocity.BedrockCompat;
 
 /**
  * Handles player connections and disconnections for Velocity
@@ -22,13 +21,11 @@ public class ConnectionListenerVelocity {
         UUIDManager.get().supplyInternUUID(player.getUsername(), player.getUniqueId());
 
         return EventTask.async(() -> {
-            String result = Universal.get().callConnection(player.getUsername(), 
-                player.getRemoteAddress().getAddress().getHostAddress());
+            String result = Universal.get().callConnection(player.getUsername(),
+                player.getRemoteAddress().getAddress().getHostAddress(), null, player);
 
             if (result != null) {
-                MiniMessage miniMessage = MiniMessage.miniMessage();
-                Component reasonComponent = miniMessage.deserialize(result.replace('§', '&'));
-                event.setResult(LoginEvent.ComponentResult.denied(reasonComponent));
+                event.setResult(LoginEvent.ComponentResult.denied(BedrockCompat.disconnectReason(player, result)));
             }
         });
     }

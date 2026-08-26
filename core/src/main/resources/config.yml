@@ -21,7 +21,14 @@ DetailedDisableMessage: true
 
 # Whether to disallow connections to the server when there is an error
 # with the database. (e.g.: if your MySQL Server goes down)
+# If this happens, players are kicked with "Failed to load player data!" — that is NOT a ban.
+# The plugin will try to reconnect to MySQL before kicking.
 LockdownOnError: true
+
+# Players in this list can still join if the database is down (same as permission ab.lockdown.bypass).
+# ExemptPlayers are also allowed through.
+LockdownExemptPlayers:
+- 'Robinaves'
 
 # This will be the default reason to be displayed if none is given
 # !! You may use MiniMessage formatting (https://docs.advntr.dev/minimessage/format.html)
