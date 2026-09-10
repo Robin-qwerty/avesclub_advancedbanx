@@ -106,6 +106,7 @@ public class Punishment {
             final Object p = mi.getPlayer(getName());
 
             if (getType().getBasic() == PunishmentType.BAN || getType() == PunishmentType.KICK) {
+                Universal.get().getLogger().info("Kicking " + getName() + " (" + getType().getName() + "): " + getReason());
                 mi.runSync(() -> mi.kickPlayer(getName(), getLayoutBSN()));
             } else {
                 if (getType().getBasic() != PunishmentType.NOTE)
@@ -113,6 +114,22 @@ public class Punishment {
                         mi.sendMessage(p, str);
                     }
                 PunishmentManager.get().getLoadedPunishments(false).add(this);
+            }
+        }
+
+        // IP bans are stored keyed by IP, not by the name that was typed - kick every other
+        // currently online player whose IP matches too, not just the player named on the command.
+        if (getType().isIpOrientated()) {
+            String targetIp = getUuid();
+            for (Object online : mi.getOnlinePlayers()) {
+                String onlineName = mi.getName(online);
+                if (onlineName == null || onlineName.equalsIgnoreCase(getName())) {
+                    continue; // already handled above, if they were online
+                }
+                if (targetIp.equalsIgnoreCase(mi.getIP(online))) {
+                    Universal.get().getLogger().info("Also kicking " + onlineName + " - shares the banned IP " + targetIp + " with " + getName());
+                    mi.runSync(() -> mi.kickPlayer(onlineName, getLayoutBSN()));
+                }
             }
         }
 
@@ -158,7 +175,7 @@ public class Punishment {
                 "DATE", getDate(start),
                 "COUNT", cWarnings + "");
 
-        mi.notify("ab.notify." + getType().getName(), notification);
+        mi.notify("avesban.notify." + getType().getName(), notification);
     }
 
     public void delete() {
@@ -186,7 +203,7 @@ public class Punishment {
         if (who != null) {
             String message = MessageManager.getMessage("Un" + getType().getBasic().getConfSection("Notification"),
                     true, "OPERATOR", who, "NAME", getName());
-            mi.notify("ab.undoNotify." + getType().getBasic().getName(), Collections.singletonList(message));
+            mi.notify("avesban.undoNotify." + getType().getBasic().getName(), Collections.singletonList(message));
 
             Universal.get().getLogger().fine(who + " is deleting a punishment");
         }

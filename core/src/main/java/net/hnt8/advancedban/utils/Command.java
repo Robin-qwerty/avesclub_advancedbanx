@@ -118,21 +118,21 @@ public enum Command {
             PunishmentType.KICK.getConfSection("Usage"),
             "kick"),
 
-    UN_BAN("ab." + PunishmentType.BAN.getName() + ".undo",
+    UN_BAN("avesban." + PunishmentType.BAN.getName() + ".undo",
             "\\S+( \\S+)?",
             new BannedPlayersTabCompleter(),
             new RevokeProcessor(PunishmentType.BAN),
             "Un" + PunishmentType.BAN.getConfSection("Usage"),
             "unban"),
 
-    UN_MUTE("ab." + PunishmentType.MUTE.getName() + ".undo",
+    UN_MUTE("avesban." + PunishmentType.MUTE.getName() + ".undo",
             "\\S+",
             new BasicTabCompleter(CleanTabCompleter.PLAYER_PLACEHOLDER, "[Name]"),
             new RevokeProcessor(PunishmentType.MUTE),
             "Un" + PunishmentType.MUTE.getConfSection("Usage"),
             "unmute"),
 
-    UN_WARN("ab." + PunishmentType.WARNING.getName() + ".undo",
+    UN_WARN("avesban." + PunishmentType.WARNING.getName() + ".undo",
             "[0-9]+|(?i:clear \\S+)",
             new CleanTabCompleter((user, args) -> {
                 if(args.length == 1) {
@@ -171,7 +171,7 @@ public enum Command {
             },
             "Un" + PunishmentType.WARNING.getConfSection("Usage"),
             "unwarn"),
-    UN_NOTE("ab." + PunishmentType.NOTE.getName() + ".undo",
+    UN_NOTE("avesban." + PunishmentType.NOTE.getName() + ".undo",
             "[0-9]+|(?i:clear \\S+)",
             new CleanTabCompleter((user, args) -> {
                 if(args.length == 1) {
@@ -211,14 +211,14 @@ public enum Command {
             "Un" + PunishmentType.NOTE.getConfSection("Usage"),
             "unnote"),
 
-    UN_PUNISH("ab.all.undo",
+    UN_PUNISH("avesban.all.undo",
             "[0-9]+",
             new BasicTabCompleter("<ID>"),
             new RevokeByIdProcessor("UnPunish", PunishmentManager.get()::getPunishment),
             "UnPunish.Usage",
             "unpunish"),
 
-    CHANGE_REASON("ab.changeReason",
+    CHANGE_REASON("avesban.changeReason",
             "([0-9]+|(?i)(ban|mute) \\S+) .+",
             new CleanTabCompleter((user, args) -> {
                 if(args.length <= 1) {
@@ -273,7 +273,7 @@ public enum Command {
             "ChangeReason.Usage",
             "change-reason"),
 
-    BAN_LIST("ab.banlist",
+    BAN_LIST("avesban.banlist",
             "([1-9][0-9]*)?",
             new BasicTabCompleter("<Page>"),
             new ListProcessor(
@@ -282,7 +282,7 @@ public enum Command {
             "Banlist.Usage",
             "banlist"),
 
-    HISTORY("ab.history",
+    HISTORY("avesban.history",
             "\\S+( [1-9][0-9]*)?",
             new CleanTabCompleter((user, args) -> {
                 if(args.length == 1)
@@ -293,7 +293,7 @@ public enum Command {
                     return MutableTabCompleter.list();
             }),
             new ListProcessor(
-                    target -> PunishmentManager.get().getPunishments(target, null, false),
+                    target -> PunishmentManager.get().getPunishmentsWithKnownIps(target, null, false),
                     "History", true, true),
             "History.Usage",
             "history"),
@@ -302,7 +302,7 @@ public enum Command {
             "\\S+( [1-9][0-9]*)?|\\S+|",
             new CleanTabCompleter((user, args) -> {
                 if(args.length == 1)
-                    if(Universal.get().getMethods().hasPerms(user, "ab.notes.other"))
+                    if(Universal.get().getMethods().hasPerms(user, "avesban.notes.other"))
                         return MutableTabCompleter.list(CleanTabCompleter.PLAYER_PLACEHOLDER, "<Name>", "<Page>");
                     else
                         return MutableTabCompleter.list("<Page>");
@@ -313,7 +313,7 @@ public enum Command {
             }),
             input -> {
                 if (input.hasNext() && !input.getPrimary().matches("[1-9][0-9]*")) {
-                    if (!Universal.get().hasPerms(input.getSender(), "ab.warns.other")) {
+                    if (!Universal.get().hasPerms(input.getSender(), "avesban.warns.other")) {
                         MessageManager.sendMessage(input.getSender(), "General.NoPerms", true);
                         return;
                     }
@@ -322,7 +322,7 @@ public enum Command {
                             target -> PunishmentManager.get().getPunishments(target, PunishmentType.WARNING, true),
                             "Warns", false, true).accept(input);
                 } else {
-                    if (!Universal.get().hasPerms(input.getSender(), "ab.warns.own")) {
+                    if (!Universal.get().hasPerms(input.getSender(), "avesban.warns.own")) {
                         MessageManager.sendMessage(input.getSender(), "General.NoPerms", true);
                         return;
                     }
@@ -340,7 +340,7 @@ public enum Command {
             "\\S+( [1-9][0-9]*)?|\\S+|",
             new CleanTabCompleter((user, args) -> {
                 if(args.length == 1)
-                    if(Universal.get().getMethods().hasPerms(user, "ab.notes.other"))
+                    if(Universal.get().getMethods().hasPerms(user, "avesban.notes.other"))
                         return MutableTabCompleter.list(CleanTabCompleter.PLAYER_PLACEHOLDER, "<Name>", "<Page>");
                     else
                         return MutableTabCompleter.list("<Page>");
@@ -351,7 +351,7 @@ public enum Command {
             }),
             input -> {
                 if (input.hasNext() && !input.getPrimary().matches("[1-9][0-9]*")) {
-                    if (!Universal.get().hasPerms(input.getSender(), "ab.notes.other")) {
+                    if (!Universal.get().hasPerms(input.getSender(), "avesban.notes.other")) {
                         MessageManager.sendMessage(input.getSender(), "General.NoPerms", true);
                         return;
                     }
@@ -360,7 +360,7 @@ public enum Command {
                             target -> PunishmentManager.get().getPunishments(target, PunishmentType.NOTE, true),
                             "Notes", false, true).accept(input);
                 } else {
-                    if (!Universal.get().hasPerms(input.getSender(), "ab.notes.own")) {
+                    if (!Universal.get().hasPerms(input.getSender(), "avesban.notes.own")) {
                         MessageManager.sendMessage(input.getSender(), "General.NoPerms", true);
                         return;
                     }
@@ -375,7 +375,7 @@ public enum Command {
             "Notes.Usage",
             "notes"),
 
-    CHECK("ab.check",
+    CHECK("avesban.check",
             "\\S+",
             new BasicTabCompleter(CleanTabCompleter.PLAYER_PLACEHOLDER, "[Name]"),
             input -> {
@@ -384,8 +384,9 @@ public enum Command {
                 
                 String uuid;
                 String ip;
+                String firstIp = null;
                 String displayName;
-                
+
                 if (isIpAddress) {
                     // Input is an IP address - use it directly
                     ip = name;
@@ -397,14 +398,44 @@ public enum Command {
                     uuid = processName(input);
                     if (uuid == null)
                         return;
-                    
-                    ip = Universal.get().getIps().getOrDefault(name.toLowerCase(), "none cashed");
+
+                    ip = Universal.get().getIps().get(name.toLowerCase());
+                    TrackedPlayer record = PlayerManager.get().getByUuid(uuid);
+                    if (record != null) {
+                        firstIp = record.getFirstIp();
+                        if (ip == null) {
+                            // Nothing cached in-memory this session (offline/proxy restarted) - fall back
+                            // to the persisted last known IP so /check still works for offline players.
+                            ip = record.getLastIp();
+                        }
+                    }
+                    if (ip == null) {
+                        ip = "none cashed";
+                    }
                     displayName = name;
                 }
 
                 String loc = Universal.get().getMethods().getFromUrlJson("http://ip-api.com/json/" + ip, "country");
                 Punishment mute = PunishmentManager.get().getMute(uuid);
                 Punishment ban = PunishmentManager.get().getBan(uuid);
+
+                // IP bans are stored keyed by IP rather than uuid, so a player who was never
+                // personally banned can still be blocked because their (current or first) IP is.
+                Punishment ipBan = !isIpAddress && !"none cashed".equals(ip) ? PunishmentManager.get().getBan(ip) : null;
+                Punishment firstIpBan = !isIpAddress && firstIp != null && !firstIp.equals(ip) ? PunishmentManager.get().getBan(firstIp) : null;
+                List<TrackedPlayer> linkedBanned = new java.util.ArrayList<>();
+                if (!isIpAddress) {
+                    if (!"none cashed".equals(ip)) {
+                        linkedBanned.addAll(PunishmentManager.get().getBannedAccountsOnIp(ip, uuid));
+                    }
+                    if (firstIp != null && !firstIp.equals(ip)) {
+                        for (TrackedPlayer p : PunishmentManager.get().getBannedAccountsOnIp(firstIp, uuid)) {
+                            if (linkedBanned.stream().noneMatch(existing -> existing.getUuid().equalsIgnoreCase(p.getUuid()))) {
+                                linkedBanned.add(p);
+                            }
+                        }
+                    }
+                }
 
                 String cached = MessageManager.getMessage("Check.Cached", false);
                 String notCached = MessageManager.getMessage("Check.NotCached", false);
@@ -421,7 +452,7 @@ public enum Command {
                     MessageManager.sendMessage(sender, "Check.UUID", false, "UUID", uuid, "CACHED", uuidCached ? cached : notCached);
                 }
                 
-                if (Universal.get().hasPerms(sender, "ab.check.ip")) {
+                if (Universal.get().hasPerms(sender, "avesban.check.ip")) {
                     MessageManager.sendMessage(sender, "Check.IP", false, "IP", ip, "CACHED", ipCached ? cached : notCached);
                 }
                 MessageManager.sendMessage(sender, "Check.Geo", false, "LOCATION", loc == null ? "failed!" : loc);
@@ -443,7 +474,27 @@ public enum Command {
                     MessageManager.sendMessage(sender, "Check.BanServer", false, "SERVER", banIssuedOn);
                     MessageManager.sendMessage(sender, "Check.BanScope", false, "SERVER", banScope);
                 }
-                
+
+                if (!isIpAddress && Universal.get().hasPerms(sender, "avesban.check.ip")) {
+                    if (ipBan != null) {
+                        MessageManager.sendMessage(sender, "Check.IpBanned", false, "IP", ip);
+                        MessageManager.sendMessage(sender, "Check.IpBanReason", false, "REASON", ipBan.getReason());
+                        MessageManager.sendMessage(sender, "Check.IpBanOperator", false, "OPERATOR", ipBan.getOperator());
+                    }
+                    if (firstIpBan != null && (ipBan == null || firstIpBan.getId() != ipBan.getId())) {
+                        MessageManager.sendMessage(sender, "Check.FirstIpBanned", false, "IP", firstIp);
+                        MessageManager.sendMessage(sender, "Check.FirstIpBanReason", false, "REASON", firstIpBan.getReason());
+                        MessageManager.sendMessage(sender, "Check.FirstIpBanOperator", false, "OPERATOR", firstIpBan.getOperator());
+                    }
+                    if (!linkedBanned.isEmpty()) {
+                        String names = linkedBanned.stream()
+                                .map(p -> p.getName() != null ? p.getName() : "unknown")
+                                .collect(java.util.stream.Collectors.joining(", "));
+                        MessageManager.sendMessage(sender, "Check.LinkedBannedAccounts", false,
+                                "COUNT", linkedBanned.size() + "", "NAMES", names);
+                    }
+                }
+
                 // Only show warns/notes for player names, not IP addresses
                 if (!isIpAddress) {
                     MessageManager.sendMessage(sender, "Check.Warn", false, "COUNT", PunishmentManager.get().getCurrentWarns(uuid) + "");
@@ -453,7 +504,7 @@ public enum Command {
             "Check.Usage",
             "check"),
 
-    IP_CHECK("ab.ipcheck",
+    IP_CHECK("avesban.ipcheck",
             "^(?:[0-9]{1,3}\\.){3}[0-9]{1,3}$",
             new BasicTabCompleter("<IP>"),
             input -> {
@@ -485,7 +536,7 @@ public enum Command {
             "IpCheck.Usage",
             "ipcheck"),
 
-    SYSTEM_PREFERENCES("ab.systemprefs",
+    SYSTEM_PREFERENCES("avesban.systemprefs",
             ".*",
             null,
             input -> {
@@ -512,7 +563,7 @@ public enum Command {
                 Object sender = input.getSender();
                 if (input.hasNext()) {
                     if (input.getPrimaryData().equals("reload")) {
-                        if (Universal.get().hasPerms(sender, "ab.reload")) {
+                        if (Universal.get().hasPerms(sender, "avesban.reload")) {
                             mi.loadFiles();
                             mi.sendMessage(sender, "<green><bold>Avesban</bold></green> <dark_gray>»</dark_gray> <gray>Reloaded!</gray>");
                         } else {
@@ -520,7 +571,7 @@ public enum Command {
                         }
                         return;
                     } else if (input.getPrimaryData().equals("help")) {
-                        if (Universal.get().hasPerms(sender, "ab.help")) {
+                        if (Universal.get().hasPerms(sender, "avesban.help")) {
                             mi.sendMessage(sender, "");
                             mi.sendMessage(sender, "<red><bold>Avesban</bold></red> <gray>Command-Help</gray>");
                             mi.sendMessage(sender, "");

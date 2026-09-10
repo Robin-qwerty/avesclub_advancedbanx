@@ -325,10 +325,11 @@ public class Universal {
                 }
             }
         }
-        if (connectingPlayer != null && hasPerms(connectingPlayer, "ab.lockdown.bypass")) {
+        if (connectingPlayer != null && hasPerms(connectingPlayer, "avesban.lockdown.bypass")) {
             return true;
         }
-        return mi.getOfflinePermissionPlayer(name).hasPermission("ab.lockdown.bypass");
+        return mi.getOfflinePermissionPlayer(name).hasPermission("avesban.lockdown.bypass")
+                || mi.getOfflinePermissionPlayer(name).hasPermission("ab.lockdown.bypass");
     }
 
     /**
@@ -429,7 +430,26 @@ public class Universal {
      * @param perms  the perms
      * @return the boolean
      */
+    private static final String CURRENT_PERM_PREFIX = "avesban.";
+    private static final String LEGACY_PERM_PREFIX = "ab.";
+
     public boolean hasPerms(Object player, String perms) {
+        if (hasPermsExact(player, perms)) {
+            return true;
+        }
+
+        // Permissions were renamed from "ab." to "avesban."; fall back to the old
+        // node so permission grants made before the rename keep working.
+        if (perms.startsWith(CURRENT_PERM_PREFIX)) {
+            String legacy = LEGACY_PERM_PREFIX + perms.substring(CURRENT_PERM_PREFIX.length());
+            if (hasPermsExact(player, legacy)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean hasPermsExact(Object player, String perms) {
         if (mi.hasPerms(player, perms)) {
             return true;
         }

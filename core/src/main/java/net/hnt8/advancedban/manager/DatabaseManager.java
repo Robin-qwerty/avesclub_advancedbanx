@@ -114,6 +114,9 @@ public class DatabaseManager {
         executeStatement(SQLQuery.CREATE_TABLE_PUNISHMENT);
         executeStatement(SQLQuery.CREATE_TABLE_PUNISHMENT_HISTORY);
         executeStatement(SQLQuery.CREATE_TABLE_PLAYERS);
+        // Runs on both MySQL and HSQLDB so databases created before the firstIp
+        // column existed get upgraded too, not just MySQL ones.
+        addFirstIpColumnIfMissing();
         if (useMySQL) {
             // Fix LONG columns to BIGINT if they exist (for existing databases)
             fixLongColumnsToBigInt();
@@ -282,6 +285,7 @@ public class DatabaseManager {
 
             ensureMySqlIndex(connection, "Players", "idx_players_name", "name");
             ensureMySqlIndex(connection, "Players", "idx_players_lastIp", "lastIp");
+            ensureMySqlIndex(connection, "Players", "idx_players_firstIp", "firstIp");
             ensureMySqlIndex(connection, "Players", "idx_players_lastJoin", "lastJoin");
             
             Universal.get().getLogger().info("MySQL indexes creation completed.");
@@ -391,6 +395,39 @@ public class DatabaseManager {
             }
         } catch (SQLException ex) {
             Universal.get().getLogger().warning("Failed to add targetServer column: " + ex.getMessage());
+            Universal.get().debugSqlException(ex);
+        }
+    }
+
+    /**
+     * Adds the firstIp column to the Players table if it doesn't exist, and backfills it
+     * from lastIp for players that already had a record before this column existed.
+     * Unlike the other "if missing" helpers this runs for both MySQL and HSQLDB, since
+     * HSQLDB databases created before this column existed also need the migration.
+     */
+    private void addFirstIpColumnIfMissing() {
+        try (Connection connection = dataSource.getConnection()) {
+            if (columnExists(connection, "Players", "firstIp")) {
+                return;
+            }
+
+            Universal.get().getLogger().info("Adding 'firstIp' column to Players table...");
+            String alterSql = useMySQL
+                    ? "ALTER TABLE `Players` ADD COLUMN `firstIp` VARCHAR(45) NULL DEFAULT NULL"
+                    : "ALTER TABLE Players ADD COLUMN firstIp VARCHAR(45) DEFAULT NULL";
+            try (Statement stmt = connection.createStatement()) {
+                stmt.execute(alterSql);
+            }
+
+            String backfillSql = useMySQL
+                    ? "UPDATE `Players` SET `firstIp` = `lastIp` WHERE `firstIp` IS NULL AND `lastIp` IS NOT NULL"
+                    : "UPDATE Players SET firstIp = lastIp WHERE firstIp IS NULL AND lastIp IS NOT NULL";
+            try (Statement stmt = connection.createStatement()) {
+                int updated = stmt.executeUpdate(backfillSql);
+                Universal.get().getLogger().info("Backfilled 'firstIp' for " + updated + " existing player(s) using their lastIp.");
+            }
+        } catch (SQLException ex) {
+            Universal.get().getLogger().warning("Failed to add firstIp column: " + ex.getMessage());
             Universal.get().debugSqlException(ex);
         }
     }

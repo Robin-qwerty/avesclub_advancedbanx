@@ -105,10 +105,10 @@ public class PunishmentProcessor implements Consumer<Command.CommandInput> {
             return new TimeCalculation(layout, actualTime);
         }
         long toAdd = TimeManager.toMilliSec(time);
-        if (!Universal.get().hasPerms(input.getSender(), "ab." + type.getName() + ".dur.max")) {
+        if (!Universal.get().hasPerms(input.getSender(), "avesban." + type.getName() + ".dur.max")) {
             long max = -1;
             for (int i = 10; i >= 1; i--) {
-                if (Universal.get().hasPerms(input.getSender(), "ab." + type.getName() + ".dur." + i) &&
+                if (Universal.get().hasPerms(input.getSender(), "avesban." + type.getName() + ".dur." + i) &&
                         mi.contains(mi.getConfig(), "TempPerms." + i)) {
                     max = mi.getLong(mi.getConfig(), "TempPerms." + i) * 1000;
                     break;
@@ -130,11 +130,13 @@ public class PunishmentProcessor implements Consumer<Command.CommandInput> {
         boolean exempt = false;
         if (mi.isOnline(dataName)) {
             Object onlineTarget = mi.getPlayer(dataName);
-            exempt = canNotPunish((perms) -> mi.hasPerms(sender, perms), (perms) -> mi.hasPerms(onlineTarget, perms), type.getName());
+            exempt = canNotPunish(legacyFallback((perms) -> mi.hasPerms(sender, perms)),
+                    legacyFallback((perms) -> mi.hasPerms(onlineTarget, perms)), type.getName());
         } else {
             final Permissionable offlinePermissionPlayer = mi.getOfflinePermissionPlayer(name);
             exempt = Universal.get().isExemptPlayer(dataName) ||
-                    canNotPunish((perms) -> mi.hasPerms(sender, perms), offlinePermissionPlayer::hasPermission, type.getName());
+                    canNotPunish(legacyFallback((perms) -> mi.hasPerms(sender, perms)),
+                            legacyFallback(offlinePermissionPlayer::hasPermission), type.getName());
         }
 
         if (exempt) {
@@ -147,13 +149,27 @@ public class PunishmentProcessor implements Consumer<Command.CommandInput> {
 
     // Check based on exempt level if some is able to ban a player
     public static boolean canNotPunish(Function<String, Boolean> operatorHasPerms, Function<String, Boolean> targetHasPerms, String path) {
-        final String perms = "ab." + path + ".exempt";
+        final String perms = "avesban." + path + ".exempt";
         if (targetHasPerms.apply(perms))
             return true;
 
         int targetLevel = permissionLevel(targetHasPerms, perms);
 
         return targetLevel != 0 && permissionLevel(operatorHasPerms, perms) <= targetLevel;
+    }
+
+    // Permissions were renamed from "ab." to "avesban."; fall back to the old node
+    // so exempt-level grants made before the rename keep working.
+    private static Function<String, Boolean> legacyFallback(Function<String, Boolean> checker) {
+        return perms -> {
+            if (checker.apply(perms)) {
+                return true;
+            }
+            if (perms.startsWith("avesban.")) {
+                return checker.apply("ab." + perms.substring("avesban.".length()));
+            }
+            return false;
+        };
     }
 
     private static int permissionLevel(Function<String, Boolean> hasPerms, String permission) {

@@ -4,16 +4,16 @@ package net.hnt8.advancedban.utils;
  * Created by Leoko @ dev.skamps.eu on 30.05.2016.
  */
 public enum PunishmentType {
-    BAN("Ban", null, false, "ab.ban.perma"),
-    TEMP_BAN("Tempban", BAN, true, "ab.ban.temp"),
-    IP_BAN("Ipban", BAN, false, "ab.ipban.perma"),
-    TEMP_IP_BAN("Tempipban", BAN, true, "ab.ipban.temp"),
-    MUTE("Mute", null, false, "ab.mute.perma"),
-    TEMP_MUTE("Tempmute", MUTE, true, "ab.mute.temp"),
-    WARNING("Warn", null, false, "ab.warn.perma"),
-    TEMP_WARNING("Tempwarn", WARNING, true, "ab.warn.temp"),
-    KICK("Kick", null, false, "ab.kick.use"),
-    NOTE("Note", null, false, "ab.note.use");
+    BAN("Ban", null, false, "avesban.ban.perma"),
+    TEMP_BAN("Tempban", BAN, true, "avesban.ban.temp"),
+    IP_BAN("Ipban", BAN, false, "avesban.ipban.perma"),
+    TEMP_IP_BAN("Tempipban", BAN, true, "avesban.ipban.temp"),
+    MUTE("Mute", null, false, "avesban.mute.perma"),
+    TEMP_MUTE("Tempmute", MUTE, true, "avesban.mute.temp"),
+    WARNING("Warn", null, false, "avesban.warn.perma"),
+    TEMP_WARNING("Tempwarn", WARNING, true, "avesban.warn.temp"),
+    KICK("Kick", null, false, "avesban.kick.use"),
+    NOTE("Note", null, false, "avesban.note.use");
 
     private final String name;
     private final String perms;

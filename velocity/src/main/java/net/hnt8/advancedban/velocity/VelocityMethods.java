@@ -466,7 +466,7 @@ public class VelocityMethods implements MethodInterface {
     @Override
     public void notify(String perm, List<String> notification) {
         for (Player player : getServer().getAllPlayers()) {
-            if (hasPerms(player, perm)) {
+            if (Universal.get().hasPerms(player, perm)) {
                 for (String line : notification) {
                     sendMessage(player, line);
                 }

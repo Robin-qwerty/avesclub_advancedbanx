@@ -403,7 +403,7 @@ public class BukkitMethods implements MethodInterface {
     public void notify(String perm, List<String> notification) {
         Bukkit.getOnlinePlayers()
                 .stream()
-                .filter(player -> hasPerms(player, perm))
+                .filter(player -> Universal.get().hasPerms(player, perm))
                 .forEach(player -> notification.forEach(str -> sendMessage(player, str)));
     }
 

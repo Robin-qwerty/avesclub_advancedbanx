@@ -7,14 +7,16 @@ public class TrackedPlayer {
 
     private final String uuid;
     private final String name;
+    private final String firstIp;
     private final String lastIp;
     private final long lastJoin;
     private final long lastLeave;
     private final long firstSeen;
 
-    public TrackedPlayer(String uuid, String name, String lastIp, long lastJoin, long lastLeave, long firstSeen) {
+    public TrackedPlayer(String uuid, String name, String firstIp, String lastIp, long lastJoin, long lastLeave, long firstSeen) {
         this.uuid = uuid;
         this.name = name;
+        this.firstIp = firstIp;
         this.lastIp = lastIp;
         this.lastJoin = lastJoin;
         this.lastLeave = lastLeave;
@@ -27,6 +29,10 @@ public class TrackedPlayer {
 
     public String getName() {
         return name;
+    }
+
+    public String getFirstIp() {
+        return firstIp;
     }
 
     public String getLastIp() {

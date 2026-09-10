@@ -36,7 +36,7 @@ public class PubSubMessageListener implements Listener {
                 }
             } else if (e.getMessage().startsWith("notification ")) {
                 for (ProxiedPlayer pp : ProxyServer.getInstance().getPlayers()) {
-                    if (mi.hasPerms(pp, msg[1])) {
+                    if (Universal.get().hasPerms(pp, msg[1])) {
                         mi.sendMessage(pp, e.getMessage().substring((msg[0] + msg[1]).length() + 2));
                     }
                 }

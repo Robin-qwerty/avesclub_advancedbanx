@@ -140,6 +140,7 @@ public enum SQLQuery {
             "CREATE TABLE IF NOT EXISTS `Players` (" +
             "`uuid` VARCHAR(35) NOT NULL," +
             "`name` VARCHAR(16) NULL DEFAULT NULL," +
+            "`firstIp` VARCHAR(45) NULL DEFAULT NULL," +
             "`lastIp` VARCHAR(45) NULL DEFAULT NULL," +
             "`lastJoin` BIGINT NULL DEFAULT NULL," +
             "`lastLeave` BIGINT NULL DEFAULT NULL," +
@@ -149,14 +150,15 @@ public enum SQLQuery {
             "CREATE TABLE IF NOT EXISTS Players (" +
             "uuid VARCHAR(35) NOT NULL PRIMARY KEY," +
             "name VARCHAR(16)," +
+            "firstIp VARCHAR(45)," +
             "lastIp VARCHAR(45)," +
             "lastJoin BIGINT," +
             "lastLeave BIGINT," +
             "firstSeen BIGINT)"
     ),
     INSERT_PLAYER(
-            "INSERT INTO `Players` (`uuid`, `name`, `lastIp`, `lastJoin`, `firstSeen`) VALUES (?, ?, ?, ?, ?)",
-            "INSERT INTO Players (uuid, name, lastIp, lastJoin, firstSeen) VALUES (?, ?, ?, ?, ?)"
+            "INSERT INTO `Players` (`uuid`, `name`, `firstIp`, `lastIp`, `lastJoin`, `firstSeen`) VALUES (?, ?, ?, ?, ?, ?)",
+            "INSERT INTO Players (uuid, name, firstIp, lastIp, lastJoin, firstSeen) VALUES (?, ?, ?, ?, ?, ?)"
     ),
     UPDATE_PLAYER_JOIN(
             "UPDATE `Players` SET `name` = ?, `lastIp` = ?, `lastJoin` = ? WHERE `uuid` = ?",
@@ -167,8 +169,25 @@ public enum SQLQuery {
             "UPDATE Players SET lastLeave = ? WHERE uuid = ?"
     ),
     SELECT_PLAYERS_BY_IP(
-            "SELECT * FROM `Players` WHERE `lastIp` = ? ORDER BY `lastJoin` DESC",
-            "SELECT * FROM Players WHERE lastIp = ? ORDER BY lastJoin DESC"
+            "SELECT * FROM `Players` WHERE `lastIp` = ? OR `firstIp` = ? ORDER BY `lastJoin` DESC",
+            "SELECT * FROM Players WHERE lastIp = ? OR firstIp = ? ORDER BY lastJoin DESC"
+    ),
+    SELECT_PLAYER_BY_UUID(
+            "SELECT * FROM `Players` WHERE `uuid` = ?",
+            "SELECT * FROM Players WHERE uuid = ?"
+    ),
+    SELECT_SHARED_IPS(
+            "SELECT ip, COUNT(DISTINCT uuid) AS cnt FROM (" +
+            "SELECT uuid, lastIp AS ip FROM `Players` WHERE `lastIp` IS NOT NULL AND `lastIp` <> '' " +
+            "UNION " +
+            "SELECT uuid, firstIp AS ip FROM `Players` WHERE `firstIp` IS NOT NULL AND `firstIp` <> ''" +
+            ") AS combined GROUP BY ip HAVING COUNT(DISTINCT uuid) > 1 ORDER BY cnt DESC",
+
+            "SELECT ip, COUNT(DISTINCT uuid) AS cnt FROM (" +
+            "SELECT uuid, lastIp AS ip FROM Players WHERE lastIp IS NOT NULL AND lastIp <> '' " +
+            "UNION " +
+            "SELECT uuid, firstIp AS ip FROM Players WHERE firstIp IS NOT NULL AND firstIp <> ''" +
+            ") AS combined GROUP BY ip HAVING COUNT(DISTINCT uuid) > 1 ORDER BY cnt DESC"
     );
 
     private String mysql;

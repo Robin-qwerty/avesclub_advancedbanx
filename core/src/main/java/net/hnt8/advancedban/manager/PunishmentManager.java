@@ -5,6 +5,7 @@ import net.hnt8.advancedban.utils.InterimData;
 import net.hnt8.advancedban.utils.Punishment;
 import net.hnt8.advancedban.utils.PunishmentType;
 import net.hnt8.advancedban.utils.SQLQuery;
+import net.hnt8.advancedban.utils.TrackedPlayer;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -173,6 +174,61 @@ public class PunishmentManager {
             }
         }
         return ptList;
+    }
+
+    /**
+     * Same as {@link #getPunishments(String, PunishmentType, boolean)}, but for a player uuid this also
+     * includes IP-ban punishments recorded against any of that player's known IP addresses (their tracked
+     * firstIp/lastIp). IP bans are stored keyed by IP rather than by uuid (see {@link Punishment#create}),
+     * so without this they'd be invisible in the banned player's own history/check - even though the
+     * player was banned by name via e.g. {@code /ipban <name>}.
+     *
+     * @param uuid    the player's uuid
+     * @param put     the basic punishment type to search for, or null for all
+     * @param current if only active punishments should be included
+     * @return the punishments, deduplicated by id
+     */
+    public List<Punishment> getPunishmentsWithKnownIps(String uuid, PunishmentType put, boolean current) {
+        List<Punishment> result = new ArrayList<>(getPunishments(uuid, put, current));
+
+        TrackedPlayer record = PlayerManager.get().getByUuid(uuid);
+        if (record == null) {
+            return result;
+        }
+
+        Set<Integer> seenIds = new HashSet<>();
+        for (Punishment p : result) {
+            seenIds.add(p.getId());
+        }
+
+        for (String ip : new LinkedHashSet<>(Arrays.asList(record.getFirstIp(), record.getLastIp()))) {
+            if (ip == null) {
+                continue;
+            }
+            for (Punishment p : getPunishments(ip, put, current)) {
+                if (seenIds.add(p.getId())) {
+                    result.add(p);
+                }
+            }
+        }
+        return result;
+    }
+
+    /**
+     * Finds every account other than {@code excludeUuid} that shares the given IP (via its tracked
+     * firstIp or lastIp) and currently has an active ban.
+     */
+    public List<TrackedPlayer> getBannedAccountsOnIp(String ip, String excludeUuid) {
+        List<TrackedPlayer> result = new ArrayList<>();
+        if (ip == null) {
+            return result;
+        }
+        for (TrackedPlayer member : PlayerManager.get().findByIp(ip)) {
+            if (member.getUuid() != null && !member.getUuid().equalsIgnoreCase(excludeUuid) && isBanned(member.getUuid())) {
+                result.add(member);
+            }
+        }
+        return result;
     }
 
     /**

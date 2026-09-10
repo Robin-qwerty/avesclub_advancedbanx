@@ -7,50 +7,42 @@ description: Backend link plugin for Avesban - forwards ban commands to Velocity
 author: Leoko, 2vY, Robinaves
 softdepend: [Avesban]
 
+# Permissions are checked in BackendCommandExecutor (accepting both the current
+# "avesban." nodes and the legacy "ab." nodes) rather than declared here, since a
+# manifest "permission:" entry can only ever match one literal string.
 commands:
   ban:
     description: Ban a player
     usage: /<command> [player] [reason]
-    permission: ab.ban.perma
   tempban:
     description: Temporarily ban a player
     usage: /<command> [player] [duration] [reason]
-    permission: ab.ban.temp
     aliases: [punish]
   banip:
     description: Ban an IP address
     usage: /<command> [player/IP] [reason]
-    permission: ab.ipban.perma
   tempipban:
     description: Temporarily ban an IP address
     usage: /<command> [player/IP] [duration] [reason]
-    permission: ab.ipban.temp
   mute:
     description: Mute a player
     usage: /<command> [player] [reason]
-    permission: ab.mute.perma
   tempmute:
     description: Temporarily mute a player
     usage: /<command> [player] [duration] [reason]
-    permission: ab.mute.temp
   warn:
     description: Warn a player
     usage: /<command> [player] [reason]
-    permission: ab.warn.perma
   tempwarn:
     description: Temporarily warn a player
     usage: /<command> [player] [duration] [reason]
-    permission: ab.warn.temp
   kick:
     description: Kick a player
     usage: /<command> [player] [reason]
-    permission: ab.kick.use
   unban:
     description: Unban a player
     usage: /<command> [player]
-    permission: ab.ban.undo
   unmute:
     description: Unmute a player
     usage: /<command> [player]
-    permission: ab.mute.undo
 

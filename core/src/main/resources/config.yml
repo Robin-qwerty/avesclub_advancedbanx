@@ -25,7 +25,7 @@ DetailedDisableMessage: true
 # The plugin will try to reconnect to MySQL before kicking.
 LockdownOnError: true
 
-# Players in this list can still join if the database is down (same as permission ab.lockdown.bypass).
+# Players in this list can still join if the database is down (same as permission avesban.lockdown.bypass).
 # ExemptPlayers are also allowed through.
 LockdownExemptPlayers:
 - 'Robinaves'
@@ -90,8 +90,8 @@ ExemptPlayers:
 DateFormat: "MM/dd/yyyy HH:mm"
 
 # This is useful for bungeecord servers or server with permission systems which do not support *-Perms
-# So if you enable this you can use ab.all instead of ab.* or ab.ban.all instead of ab.ban.*
-# This does not work with negative permissions! e.g. -ab.all would not block all commands for that user.
+# So if you enable this you can use avesban.all instead of avesban.* or avesban.ban.all instead of avesban.ban.*
+# This does not work with negative permissions! e.g. -avesban.all would not block all commands for that user.
 EnableAllPermissionNodes: false
 
 # If you use external REST-APIs they will have to respond in JSON
@@ -129,9 +129,9 @@ WarnActions:
   10: "ban %PLAYER% You have received your 10th warning!"
 
 # Here you can create permission-nodes for max-punishment-duration.
-# The permission "ab.tempban.dur.1" would allow the player to ban max. for 600sec = 10min
-# The permission "ab.tempwarn.dur.2" would allow the player to warn max. for 3600sec = 1h
-# You can only create up to 10 perms. The perms can be overridden with "ab.COMMAND.dur.max"
+# The permission "avesban.tempban.dur.1" would allow the player to ban max. for 600sec = 10min
+# The permission "avesban.tempwarn.dur.2" would allow the player to warn max. for 3600sec = 1h
+# You can only create up to 10 perms. The perms can be overridden with "avesban.COMMAND.dur.max"
 TempPerms:
   1: 600
   2: 3600

@@ -8,6 +8,7 @@ import com.velocitypowered.api.plugin.Plugin;
 import com.velocitypowered.api.plugin.annotation.DataDirectory;
 import com.velocitypowered.api.proxy.ProxyServer;
 import net.hnt8.advancedban.Universal;
+import net.hnt8.advancedban.velocity.alts.AltsCommand;
 import net.hnt8.advancedban.velocity.listener.BackendCommandListener;
 import net.hnt8.advancedban.velocity.listener.ChatListenerVelocity;
 import net.hnt8.advancedban.velocity.listener.ConnectionListenerVelocity;
@@ -63,6 +64,12 @@ public class VelocityMain {
         server.getEventManager().register(this, new ChatListenerVelocity());
         server.getEventManager().register(this, new BackendCommandListener(server));
         server.getEventManager().register(this, new ServerConnectListener());
+
+        // Registered directly here (not via core's Command enum) so the alt-account
+        // menu is fully proxy-side - no backend/Paper update is needed for it.
+        server.getCommandManager().register(
+                server.getCommandManager().metaBuilder("alts").aliases("altaccounts").build(),
+                new AltsCommand());
 
         logger.info("Avesban has been enabled!");
     }

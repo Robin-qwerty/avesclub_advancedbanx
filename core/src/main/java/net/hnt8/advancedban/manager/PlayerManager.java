@@ -33,8 +33,9 @@ public class PlayerManager {
 
         // 0 = no existing row, -1 = query failed (do not try INSERT)
         if (updated == 0) {
+            // firstIp is only ever set here, on first insert - it must never change afterwards.
             DatabaseManager.get().executeStatement(
-                    SQLQuery.INSERT_PLAYER, uuid, name, ip, now, now);
+                    SQLQuery.INSERT_PLAYER, uuid, name, ip, ip, now, now);
         }
     }
 
@@ -67,9 +68,12 @@ public class PlayerManager {
         }
     }
 
+    /**
+     * Finds every player whose firstIp or lastIp matches the given address.
+     */
     public List<TrackedPlayer> findByIp(String ip) {
         List<TrackedPlayer> players = new ArrayList<>();
-        ResultSet rs = DatabaseManager.get().executeResultStatement(SQLQuery.SELECT_PLAYERS_BY_IP, ip);
+        ResultSet rs = DatabaseManager.get().executeResultStatement(SQLQuery.SELECT_PLAYERS_BY_IP, ip, ip);
         if (rs == null) {
             return players;
         }
@@ -86,10 +90,57 @@ public class PlayerManager {
         return players;
     }
 
+    /**
+     * Looks up the tracked record for a single player by uuid, or null if none exists.
+     */
+    public TrackedPlayer getByUuid(String uuid) {
+        if (uuid == null) {
+            return null;
+        }
+        ResultSet rs = DatabaseManager.get().executeResultStatement(SQLQuery.SELECT_PLAYER_BY_UUID, uuid);
+        if (rs == null) {
+            return null;
+        }
+
+        try {
+            TrackedPlayer player = rs.next() ? fromResultSet(rs) : null;
+            rs.close();
+            return player;
+        } catch (SQLException ex) {
+            Universal.get().getLogger().severe("An error has occurred looking up a player by uuid.");
+            Universal.get().debugSqlException(ex);
+            return null;
+        }
+    }
+
+    /**
+     * Returns every IP address (from either firstIp or lastIp) that is associated
+     * with more than one distinct player, ordered by the number of accounts sharing it.
+     */
+    public List<String> findSharedIps() {
+        List<String> ips = new ArrayList<>();
+        ResultSet rs = DatabaseManager.get().executeResultStatement(SQLQuery.SELECT_SHARED_IPS);
+        if (rs == null) {
+            return ips;
+        }
+
+        try {
+            while (rs.next()) {
+                ips.add(rs.getString("ip"));
+            }
+            rs.close();
+        } catch (SQLException ex) {
+            Universal.get().getLogger().severe("An error has occurred looking up shared IPs.");
+            Universal.get().debugSqlException(ex);
+        }
+        return ips;
+    }
+
     private static TrackedPlayer fromResultSet(ResultSet rs) throws SQLException {
         return new TrackedPlayer(
                 rs.getString("uuid"),
                 rs.getString("name"),
+                rs.getString("firstIp"),
                 rs.getString("lastIp"),
                 rs.getLong("lastJoin"),
                 rs.getLong("lastLeave"),
