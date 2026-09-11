@@ -14,6 +14,15 @@ public final class IpUtils {
     }
 
     /**
+     * Whether the given command argument looks like an IP address rather than a player
+     * name. Minecraft usernames can only contain letters, digits and underscores, so
+     * anything with a "." or ":" in it can't be one.
+     */
+    public static boolean looksLikeIp(String value) {
+        return value != null && (value.indexOf('.') != -1 || value.indexOf(':') != -1);
+    }
+
+    /**
      * Masks an address down to its first segment (first octet for IPv4, first
      * hextet for IPv6) so the rest is never revealed to players without the
      * avesban.alt.ip permission.

@@ -22,9 +22,41 @@ public class PlayerManager {
         return instance == null ? instance = new PlayerManager() : instance;
     }
 
+    /**
+     * Records a player's join (name, lastIp, lastJoin - and firstIp/firstSeen on their very
+     * first ever join). Retries through a transient database blip the same way
+     * {@link PunishmentManager#load} does, instead of silently dropping the update - a banned
+     * player reconnecting from a new IP during exactly that kind of blip would otherwise still
+     * get denied (bans are cached/retried already) while their new IP quietly never gets saved.
+     */
     public void recordJoin(String name, String uuid, String ip) {
-        if (uuid == null || name == null || !DatabaseManager.get().isAvailable()) {
+        if (uuid == null || name == null) {
             return;
+        }
+
+        int updated = recordJoinOnce(name, uuid, ip);
+        if (updated == -1 && DatabaseManager.get().tryReconnect()) {
+            Universal.get().getLogger().warning("Retrying player-join record for " + name + " after reconnect...");
+            updated = recordJoinOnce(name, uuid, ip);
+        }
+        for (int attempt = 1; attempt < 3 && updated == -1; attempt++) {
+            if (!DatabaseManager.get().isAvailable()) {
+                break;
+            }
+            try {
+                Thread.sleep(150L * attempt);
+            } catch (InterruptedException ex) {
+                Thread.currentThread().interrupt();
+                break;
+            }
+            Universal.get().getLogger().warning("Retrying player-join record for " + name + " (attempt " + (attempt + 1) + "/3)");
+            updated = recordJoinOnce(name, uuid, ip);
+        }
+    }
+
+    private int recordJoinOnce(String name, String uuid, String ip) {
+        if (!DatabaseManager.get().isAvailable()) {
+            return -1;
         }
 
         long now = TimeManager.getTime();
@@ -37,15 +69,37 @@ public class PlayerManager {
             DatabaseManager.get().executeStatement(
                     SQLQuery.INSERT_PLAYER, uuid, name, ip, ip, now, now);
         }
+        return updated;
     }
 
     public void recordLeave(String name, String uuid) {
-        if (uuid == null || !DatabaseManager.get().isAvailable()) {
+        if (uuid == null) {
             return;
         }
 
-        DatabaseManager.get().executeStatement(
-                SQLQuery.UPDATE_PLAYER_LEAVE, TimeManager.getTime(), uuid);
+        boolean ok = recordLeaveOnce(uuid);
+        if (!ok && DatabaseManager.get().tryReconnect()) {
+            ok = recordLeaveOnce(uuid);
+        }
+        for (int attempt = 1; attempt < 3 && !ok; attempt++) {
+            if (!DatabaseManager.get().isAvailable()) {
+                break;
+            }
+            try {
+                Thread.sleep(150L * attempt);
+            } catch (InterruptedException ex) {
+                Thread.currentThread().interrupt();
+                break;
+            }
+            ok = recordLeaveOnce(uuid);
+        }
+    }
+
+    private boolean recordLeaveOnce(String uuid) {
+        if (!DatabaseManager.get().isAvailable()) {
+            return false;
+        }
+        return DatabaseManager.get().executeUpdate(SQLQuery.UPDATE_PLAYER_LEAVE, TimeManager.getTime(), uuid) != -1;
     }
 
     /**

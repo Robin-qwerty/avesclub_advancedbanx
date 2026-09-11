@@ -56,6 +56,8 @@ public class AltsCommand implements SimpleCommand {
             Integer page = parseInt(args[0]);
             if (page != null) {
                 showList(sender, page, canSeeIp);
+            } else if (IpUtils.looksLikeIp(args[0])) {
+                showIpLookup(sender, args[0], canSeeIp);
             } else {
                 showPlayerLookup(sender, args[0], canSeeIp);
             }
@@ -101,7 +103,7 @@ public class AltsCommand implements SimpleCommand {
         if (footer.length() > 0) {
             send(sender, footer.toString());
         }
-        send(sender, "<gray><italic>Click an address to view details, or run /alts <player> to check someone directly.</italic></gray>");
+        send(sender, "<gray><italic>Click an address to view details, or run /alts [player|ip] to check something directly.</italic></gray>");
     }
 
     private void showDetail(CommandSource sender, int index, boolean canSeeIp) {
@@ -117,6 +119,24 @@ public class AltsCommand implements SimpleCommand {
         AltGroup group = AltAccountService.findGroupForPlayer(name);
         if (group == null) {
             send(sender, "<gray>" + name + " doesn't share an IP address with any other tracked account.</gray>");
+            return;
+        }
+        renderGroup(sender, group, canSeeIp, false);
+    }
+
+    private void showIpLookup(CommandSource sender, String ip, boolean canSeeIp) {
+        AltGroup group = AltAccountService.findGroupForIp(ip);
+        String ipDisplay = IpUtils.display(ip, canSeeIp);
+        if (group == null) {
+            send(sender, "<gray>No tracked players have used " + ipDisplay + ".</gray>");
+            return;
+        }
+        if (group.getMembers().size() == 1) {
+            TrackedPlayer only = group.getMembers().get(0);
+            String name = only.getName() != null ? only.getName() : "unknown";
+            send(sender, "<gray>Only one tracked account has used " + ipDisplay + ":</gray> "
+                    + "<hover:show_text:'<gray>Click to run /check " + name + "</gray>'>"
+                    + "<click:run_command:'/check " + name + "'><yellow>" + name + "</yellow></click></hover>");
             return;
         }
         renderGroup(sender, group, canSeeIp, false);
@@ -177,7 +197,7 @@ public class AltsCommand implements SimpleCommand {
     }
 
     private void sendUsage(CommandSource sender) {
-        send(sender, "<gray>Usage: /alts [page|player] | /alts view <number></gray>");
+        send(sender, "<gray>Usage: /alts [page|player|ip] | /alts view [number]</gray>");
     }
 
     private void send(CommandSource sender, String miniMessage) {

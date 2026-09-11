@@ -5,6 +5,7 @@ import net.hnt8.advancedban.manager.*;
 import net.hnt8.advancedban.utils.Command;
 import net.hnt8.advancedban.utils.InterimData;
 import net.hnt8.advancedban.utils.Punishment;
+import net.hnt8.advancedban.utils.TrackedPlayer;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.text.serializer.ansi.ANSIComponentSerializer;
@@ -376,6 +377,7 @@ public class Universal {
             getIps().put(name, ip);
         }
 
+        TrackedPlayer previousRecord = PlayerManager.get().getByUuid(uuid);
         PlayerManager.get().recordJoin(name, uuid, ip);
 
         InterimData interimData = PunishmentManager.get().load(name, uuid, ip);
@@ -403,24 +405,27 @@ public class Universal {
             interimData.accept();
             return null;
         }
-        
-        // Check if this is a server-specific ban and if the player is trying to join that server
-        if (targetServer != null && pt.getTargetServer() != null) {
-            // Server-specific ban - only block if trying to join that specific server
-            if (pt.getTargetServer().equalsIgnoreCase(targetServer)) {
-                return pt.getLayoutBSN();
-            } else {
-                // Player is trying to join a different server, allow it
-                return null;
-            }
-        } else if (pt.getTargetServer() == null) {
-            // Network-wide ban - block on all servers (including initial login)
-            return pt.getLayoutBSN();
-        } else {
-            // Server-specific ban but no target server specified (initial login)
-            // Allow initial login, but they'll be blocked when trying to join the specific server
+
+        // Server-specific ban but no target server specified (initial login) - allow it through,
+        // they'll be blocked once they actually try to join that specific server.
+        if (targetServer == null && pt.getTargetServer() != null) {
             return null;
         }
+        // Server-specific ban, but for a different server than the one being joined - allow it.
+        if (targetServer != null && pt.getTargetServer() != null && !pt.getTargetServer().equalsIgnoreCase(targetServer)) {
+            return null;
+        }
+
+        // Actually denying the connection past this point - a banned player showing up on an IP
+        // that's new for them is worth flagging, since /alts only surfaces *shared* IPs and this
+        // one may not (yet) be shared with anything else tracked.
+        if (ip != null && previousRecord != null && previousRecord.getLastIp() != null
+                && !previousRecord.getLastIp().equalsIgnoreCase(ip)) {
+            getLogger().warning("Banned player " + name + " attempted to connect from a new IP (" + ip
+                    + ", previously " + previousRecord.getLastIp() + ") - possible ban evasion attempt.");
+        }
+
+        return pt.getLayoutBSN();
     }
 
     /**

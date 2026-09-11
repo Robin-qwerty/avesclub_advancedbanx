@@ -74,6 +74,24 @@ public final class AltAccountService {
         return new AltGroup(ip, members, result.getScore(), result.getBand(), result.getReasons());
     }
 
+    /**
+     * Looks up every tracked account that has used a specific IP address directly, or
+     * null if no tracked account has ever used it. Unlike {@link #listGroups()} this
+     * also returns a group of just one account, since staff looking up a specific
+     * address (e.g. from a report or server log) want to know who's behind it even if
+     * nobody else shares it.
+     */
+    public static AltGroup findGroupForIp(String ip) {
+        List<TrackedPlayer> members = PlayerManager.get().findByIp(ip);
+        if (members.isEmpty()) {
+            return null;
+        }
+
+        Set<String> onlineUuids = onlineUuids();
+        AltScorer.ScoreResult result = AltScorer.score(ip, members, onlineUuids);
+        return new AltGroup(ip, members, result.getScore(), result.getBand(), result.getReasons());
+    }
+
     private static Set<String> onlineUuids() {
         MethodInterface mi = Universal.get().getMethods();
         Set<String> uuids = new HashSet<>();
