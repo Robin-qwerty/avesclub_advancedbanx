@@ -176,6 +176,10 @@ public enum SQLQuery {
             "SELECT * FROM `Players` WHERE `uuid` = ?",
             "SELECT * FROM Players WHERE uuid = ?"
     ),
+    SELECT_PLAYER_BY_NAME(
+            "SELECT * FROM `Players` WHERE LOWER(`name`) = LOWER(?) ORDER BY `lastJoin` DESC LIMIT 1",
+            "SELECT * FROM Players WHERE LOWER(name) = LOWER(?) ORDER BY lastJoin DESC LIMIT 1"
+    ),
     SELECT_SHARED_IPS(
             "SELECT ip, COUNT(DISTINCT uuid) AS cnt FROM (" +
             "SELECT uuid, lastIp AS ip FROM `Players` WHERE `lastIp` IS NOT NULL AND `lastIp` <> '' " +
@@ -188,6 +192,10 @@ public enum SQLQuery {
             "UNION " +
             "SELECT uuid, firstIp AS ip FROM Players WHERE firstIp IS NOT NULL AND firstIp <> ''" +
             ") AS combined GROUP BY ip HAVING COUNT(DISTINCT uuid) > 1 ORDER BY cnt DESC"
+    ),
+    SELECT_RECENT_PLAYER_NAMES(
+            "SELECT `name` FROM `Players` WHERE `name` IS NOT NULL ORDER BY `lastJoin` DESC LIMIT ?",
+            "SELECT name FROM Players WHERE name IS NOT NULL ORDER BY lastJoin DESC LIMIT ?"
     );
 
     private String mysql;

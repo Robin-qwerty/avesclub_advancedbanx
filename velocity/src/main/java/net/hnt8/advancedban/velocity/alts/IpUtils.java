@@ -13,13 +13,23 @@ public final class IpUtils {
         return ip != null && ip.contains(":");
     }
 
+    private static final String IPV4_PATTERN =
+            "^(?:(?:25[0-5]|2[0-4]\\d|[01]?\\d\\d?)\\.){3}(?:25[0-5]|2[0-4]\\d|[01]?\\d\\d?)$";
+
     /**
-     * Whether the given command argument looks like an IP address rather than a player
-     * name. Minecraft usernames can only contain letters, digits and underscores, so
-     * anything with a "." or ":" in it can't be one.
+     * Whether the given command argument looks like an IP address rather than a player name.
+     * Floodgate Bedrock names start with {@code .} (e.g. {@code .CloseChunk7120}) and must
+     * not be treated as IPs just because they contain a dot.
      */
     public static boolean looksLikeIp(String value) {
-        return value != null && (value.indexOf('.') != -1 || value.indexOf(':') != -1);
+        if (value == null || value.isEmpty()) {
+            return false;
+        }
+        if (value.indexOf(':') != -1) {
+            // Java usernames cannot contain ':', so treat as IPv6 (or host:port style).
+            return true;
+        }
+        return value.matches(IPV4_PATTERN);
     }
 
     /**

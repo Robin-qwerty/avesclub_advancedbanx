@@ -13,7 +13,9 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.HashSet;
 
@@ -88,7 +90,7 @@ public class AltsCommand implements SimpleCommand {
             String ipDisplay = IpUtils.display(group.getIp(), canSeeIp);
             send(sender, "<hover:show_text:'<gray>Click to view details for this address</gray>'>"
                     + "<click:run_command:'/alts view " + displayIndex + "'>"
-                    + scoreSpan(group.getScore(), group.getScore() + "%")
+                    + AltDisplay.scoreSpan(group.getScore(), group.getScore() + "%")
                     + " <white>" + ipDisplay + "</white> <gray>- " + group.getMembers().size() + " accounts</gray>"
                     + "</click></hover>");
         }
@@ -118,7 +120,16 @@ public class AltsCommand implements SimpleCommand {
     private void showPlayerLookup(CommandSource sender, String name, boolean canSeeIp) {
         AltGroup group = AltAccountService.findGroupForPlayer(name);
         if (group == null) {
-            send(sender, "<gray>" + name + " doesn't share an IP address with any other tracked account.</gray>");
+            send(sender, "<gray>No tracked players found for <yellow>" + name + "</yellow>.</gray>");
+            return;
+        }
+        if (group.getMembers().size() == 1) {
+            TrackedPlayer only = group.getMembers().get(0);
+            String trackedName = only.getName() != null ? only.getName() : "unknown";
+            String ipDisplay = IpUtils.display(group.getIp(), canSeeIp);
+            send(sender, "<gray>Only one tracked account has used " + ipDisplay + ":</gray> "
+                    + "<hover:show_text:'<gray>Click to run /check " + trackedName + "</gray>'>"
+                    + "<click:run_command:'/check " + trackedName + "'><yellow>" + trackedName + "</yellow></click></hover>");
             return;
         }
         renderGroup(sender, group, canSeeIp, false);
@@ -152,7 +163,7 @@ public class AltsCommand implements SimpleCommand {
 
         String ipDisplay = IpUtils.display(group.getIp(), canSeeIp);
         send(sender, "<gold><bold>Alt Group</bold></gold> <gray>-</gray> <white>" + ipDisplay + "</white>  "
-                + scoreSpan(group.getScore(), group.getScore() + "% - " + group.getBand()));
+                + AltDisplay.scoreSpan(group.getScore(), group.getScore() + "% - " + group.getBand()));
 
         send(sender, "<gray>Why:</gray>");
         for (String reason : group.getReasons()) {
@@ -178,10 +189,10 @@ public class AltsCommand implements SimpleCommand {
             Punishment firstIpBan = differs ? PunishmentManager.get().getBan(firstIp) : null;
 
             if (differs) {
-                send(sender, "<gray>    first ip:</gray> " + IpUtils.display(firstIp, canSeeIp) + banTag(firstIpBan)
-                        + " <gray>| current ip:</gray> " + IpUtils.display(lastIp, canSeeIp) + banTag(lastIpBan));
+                send(sender, "<gray>    first ip:</gray> " + IpUtils.display(firstIp, canSeeIp) + AltDisplay.banTag(firstIpBan != null)
+                        + " <gray>| current ip:</gray> " + IpUtils.display(lastIp, canSeeIp) + AltDisplay.banTag(lastIpBan != null));
             } else if (lastIp != null) {
-                send(sender, "<gray>    ip:</gray> " + IpUtils.display(lastIp, canSeeIp) + banTag(lastIpBan));
+                send(sender, "<gray>    ip:</gray> " + IpUtils.display(lastIp, canSeeIp) + AltDisplay.banTag(lastIpBan != null));
             }
 
             boolean linkedBanned = !PunishmentManager.get().getBannedAccountsOnIp(lastIp, member.getUuid()).isEmpty()
@@ -204,22 +215,6 @@ public class AltsCommand implements SimpleCommand {
         Universal.get().getMethods().sendMessage(sender, miniMessage);
     }
 
-    private String banTag(Punishment ban) {
-        return ban == null ? "" : " <red>[BANNED]</red>";
-    }
-
-    private String scoreSpan(int score, String label) {
-        String tag = scoreTagName(score);
-        return "<" + tag + ">[" + label + "]</" + tag + ">";
-    }
-
-    private String scoreTagName(int score) {
-        if (score >= 75) return "red";
-        if (score >= 50) return "gold";
-        if (score >= 25) return "yellow";
-        return "green";
-    }
-
     private Integer parseInt(String str) {
         try {
             return Integer.parseInt(str);
@@ -236,16 +231,38 @@ public class AltsCommand implements SimpleCommand {
         }
 
         String[] args = invocation.arguments();
-        if (args.length <= 1) {
-            MethodInterface mi = Universal.get().getMethods();
-            List<String> suggestions = new ArrayList<>();
-            suggestions.add("view");
-            for (Object player : mi.getOnlinePlayers()) {
-                suggestions.add(mi.getName(player));
-            }
-            return suggestions;
+        if (args.length > 1) {
+            return Collections.emptyList();
         }
-        return Collections.emptyList();
+
+        String partial = args.length == 1 ? args[0].toLowerCase() : "";
+        MethodInterface mi = Universal.get().getMethods();
+
+        // Case-insensitive dedup; online players (always live) take priority over the
+        // periodically refreshed recent-players cache for the same name.
+        Map<String, String> byLowerName = new LinkedHashMap<>();
+        if ("view".startsWith(partial)) {
+            byLowerName.put("view", "view");
+        }
+        for (Object player : mi.getOnlinePlayers()) {
+            String name = mi.getName(player);
+            if (name != null) {
+                byLowerName.put(name.toLowerCase(), name);
+            }
+        }
+        for (String name : RecentPlayerCache.get()) {
+            if (name != null) {
+                byLowerName.putIfAbsent(name.toLowerCase(), name);
+            }
+        }
+
+        List<String> suggestions = new ArrayList<>();
+        for (Map.Entry<String, String> entry : byLowerName.entrySet()) {
+            if (partial.isEmpty() || entry.getKey().startsWith(partial)) {
+                suggestions.add(entry.getValue());
+            }
+        }
+        return suggestions;
     }
 
     @Override

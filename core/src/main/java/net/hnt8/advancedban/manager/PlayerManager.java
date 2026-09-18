@@ -168,6 +168,31 @@ public class PlayerManager {
     }
 
     /**
+     * Looks up the tracked record by player name (case-insensitive).
+     * Needed for offline Floodgate/Bedrock players whose names (e.g. {@code .CloseChunk7120})
+     * are not resolvable via Mojang's UUID API.
+     */
+    public TrackedPlayer getByName(String name) {
+        if (name == null || name.isEmpty()) {
+            return null;
+        }
+        ResultSet rs = DatabaseManager.get().executeResultStatement(SQLQuery.SELECT_PLAYER_BY_NAME, name);
+        if (rs == null) {
+            return null;
+        }
+
+        try {
+            TrackedPlayer player = rs.next() ? fromResultSet(rs) : null;
+            rs.close();
+            return player;
+        } catch (SQLException ex) {
+            Universal.get().getLogger().severe("An error has occurred looking up a player by name.");
+            Universal.get().debugSqlException(ex);
+            return null;
+        }
+    }
+
+    /**
      * Returns every IP address (from either firstIp or lastIp) that is associated
      * with more than one distinct player, ordered by the number of accounts sharing it.
      */
@@ -188,6 +213,30 @@ public class PlayerManager {
             Universal.get().debugSqlException(ex);
         }
         return ips;
+    }
+
+    /**
+     * The names of the most recently active tracked players (by lastJoin), most recent first.
+     * Bounded by {@code limit} so it stays cheap regardless of how large the Players table gets -
+     * meant for things like tab-completion, not as a full player listing.
+     */
+    public List<String> findRecentPlayerNames(int limit) {
+        List<String> names = new ArrayList<>();
+        ResultSet rs = DatabaseManager.get().executeResultStatement(SQLQuery.SELECT_RECENT_PLAYER_NAMES, limit);
+        if (rs == null) {
+            return names;
+        }
+
+        try {
+            while (rs.next()) {
+                names.add(rs.getString("name"));
+            }
+            rs.close();
+        } catch (SQLException ex) {
+            Universal.get().getLogger().severe("An error has occurred looking up recent player names.");
+            Universal.get().debugSqlException(ex);
+        }
+        return names;
     }
 
     private static TrackedPlayer fromResultSet(ResultSet rs) throws SQLException {
