@@ -72,15 +72,14 @@ public class AltsCommand implements SimpleCommand {
     private void showList(CommandSource sender, int page, boolean canSeeIp) {
         List<AltGroup> groups = AltAccountService.listGroups();
         if (groups.isEmpty()) {
-            send(sender, "<gray>No IP addresses are currently shared by more than one account - no potential alts detected.</gray>");
+            send(sender, "<gray>No shared IPs.</gray>");
             return;
         }
 
         int totalPages = Math.max(1, (int) Math.ceil(groups.size() / (double) PAGE_SIZE));
         page = Math.max(1, Math.min(page, totalPages));
 
-        send(sender, "<gold><bold>Alt Accounts</bold></gold> <gray>- page " + page + "/" + totalPages
-                + " (" + groups.size() + " shared address" + (groups.size() == 1 ? "" : "es") + ")</gray>");
+        send(sender, "<gold>Alts</gold> <gray>" + page + "/" + totalPages + " · " + groups.size() + "</gray>");
 
         int from = (page - 1) * PAGE_SIZE;
         int to = Math.min(from + PAGE_SIZE, groups.size());
@@ -88,24 +87,26 @@ public class AltsCommand implements SimpleCommand {
             AltGroup group = groups.get(i);
             int displayIndex = i + 1;
             String ipDisplay = IpUtils.display(group.getIp(), canSeeIp);
-            send(sender, "<hover:show_text:'<gray>Click to view details for this address</gray>'>"
+            List<String> banned = bannedAccountNames(group);
+            String bannedBit = banned.isEmpty() ? "" : " <red>· " + banned.size() + " banned</red>";
+            send(sender, "<hover:show_text:'" + memberListHover(group) + "'>"
                     + "<click:run_command:'/alts view " + displayIndex + "'>"
                     + AltDisplay.scoreSpan(group.getScore(), group.getScore() + "%")
-                    + " <white>" + ipDisplay + "</white> <gray>- " + group.getMembers().size() + " accounts</gray>"
+                    + " <white>" + ipDisplay + "</white> <gray>" + group.getMembers().size() + " acc</gray>"
+                    + bannedBit
                     + "</click></hover>");
         }
 
         StringBuilder footer = new StringBuilder();
         if (page > 1) {
-            footer.append("<click:run_command:'/alts ").append(page - 1).append("'><gray>[◀ Prev]</gray></click> ");
+            footer.append("<click:run_command:'/alts ").append(page - 1).append("'><gray>[◀]</gray></click> ");
         }
         if (page < totalPages) {
-            footer.append("<click:run_command:'/alts ").append(page + 1).append("'><gray>[Next ▶]</gray></click>");
+            footer.append("<click:run_command:'/alts ").append(page + 1).append("'><gray>[▶]</gray></click>");
         }
         if (footer.length() > 0) {
             send(sender, footer.toString());
         }
-        send(sender, "<gray><italic>Click an address to view details, or run /alts [player|ip] to check something directly.</italic></gray>");
     }
 
     private void showDetail(CommandSource sender, int index, boolean canSeeIp) {
@@ -123,15 +124,6 @@ public class AltsCommand implements SimpleCommand {
             send(sender, "<gray>No tracked players found for <yellow>" + name + "</yellow>.</gray>");
             return;
         }
-        if (group.getMembers().size() == 1) {
-            TrackedPlayer only = group.getMembers().get(0);
-            String trackedName = only.getName() != null ? only.getName() : "unknown";
-            String ipDisplay = IpUtils.display(group.getIp(), canSeeIp);
-            send(sender, "<gray>Only one tracked account has used " + ipDisplay + ":</gray> "
-                    + "<hover:show_text:'<gray>Click to run /check " + trackedName + "</gray>'>"
-                    + "<click:run_command:'/check " + trackedName + "'><yellow>" + trackedName + "</yellow></click></hover>");
-            return;
-        }
         renderGroup(sender, group, canSeeIp, false);
     }
 
@@ -142,69 +134,182 @@ public class AltsCommand implements SimpleCommand {
             send(sender, "<gray>No tracked players have used " + ipDisplay + ".</gray>");
             return;
         }
-        if (group.getMembers().size() == 1) {
-            TrackedPlayer only = group.getMembers().get(0);
-            String name = only.getName() != null ? only.getName() : "unknown";
-            send(sender, "<gray>Only one tracked account has used " + ipDisplay + ":</gray> "
-                    + "<hover:show_text:'<gray>Click to run /check " + name + "</gray>'>"
-                    + "<click:run_command:'/check " + name + "'><yellow>" + name + "</yellow></click></hover>");
-            return;
-        }
         renderGroup(sender, group, canSeeIp, false);
     }
 
     private void renderGroup(CommandSource sender, AltGroup group, boolean canSeeIp, boolean showBackButton) {
         MethodInterface mi = Universal.get().getMethods();
-        SimpleDateFormat format = new SimpleDateFormat(mi.getString(mi.getConfig(), "DateFormat", "dd.MM.yyyy-HH:mm"));
+        SimpleDateFormat fullDate = new SimpleDateFormat(mi.getString(mi.getConfig(), "DateFormat", "dd.MM.yyyy-HH:mm"));
+        SimpleDateFormat shortDate = new SimpleDateFormat("dd.MM.yy");
         Set<String> onlineUuids = new HashSet<>();
         for (Object player : mi.getOnlinePlayers()) {
             onlineUuids.add(mi.getInternUUID(player));
         }
 
+        List<TrackedPlayer> members = sortedMembers(group.getMembers(), onlineUuids);
+        List<String> banned = bannedAccountNames(group);
+        Punishment ipBan = PunishmentManager.get().getBan(group.getIp());
         String ipDisplay = IpUtils.display(group.getIp(), canSeeIp);
-        send(sender, "<gold><bold>Alt Group</bold></gold> <gray>-</gray> <white>" + ipDisplay + "</white>  "
-                + AltDisplay.scoreSpan(group.getScore(), group.getScore() + "% - " + group.getBand()));
 
-        send(sender, "<gray>Why:</gray>");
-        for (String reason : group.getReasons()) {
-            send(sender, "<gray> - " + reason + "</gray>");
+        send(sender, "<hover:show_text:'" + reasonsHover(group) + "'>"
+                + AltDisplay.scoreSpan(group.getScore(), group.getScore() + "%")
+                + "</hover> <white>" + ipDisplay + "</white>"
+                + AltDisplay.ipBanTag(ipBan != null)
+                + " <gray>" + members.size() + " acc</gray>");
+
+        if (!banned.isEmpty()) {
+            send(sender, "<red>Banned:</red> " + clickableNameList(banned));
         }
 
-        send(sender, "<gray>Accounts on this address (" + group.getMembers().size() + "):</gray>");
-        for (TrackedPlayer member : group.getMembers()) {
-            boolean online = member.getUuid() != null && onlineUuids.contains(member.getUuid());
-            String name = member.getName() != null ? member.getName() : "unknown";
-            String status = online ? "<green>● online</green>" : "<gray>● offline</gray>";
-
-            send(sender, "<hover:show_text:'<gray>Click to run /check " + name + "</gray>'>"
-                    + "<click:run_command:'/check " + name + "'><yellow>" + name + "</yellow></click></hover> " + status);
-            send(sender, "<gray>    first joined:</gray> " + formatTimestamp(format, member.getFirstSeen())
-                    + " <gray>| last joined:</gray> " + formatTimestamp(format, member.getLastJoin())
-                    + " <gray>| last seen:</gray> " + formatTimestamp(format, member.getLastLeave()));
-
-            String firstIp = member.getFirstIp();
-            String lastIp = member.getLastIp();
-            boolean differs = firstIp != null && lastIp != null && !firstIp.equalsIgnoreCase(lastIp);
-            Punishment lastIpBan = lastIp != null ? PunishmentManager.get().getBan(lastIp) : null;
-            Punishment firstIpBan = differs ? PunishmentManager.get().getBan(firstIp) : null;
-
-            if (differs) {
-                send(sender, "<gray>    first ip:</gray> " + IpUtils.display(firstIp, canSeeIp) + AltDisplay.banTag(firstIpBan != null)
-                        + " <gray>| current ip:</gray> " + IpUtils.display(lastIp, canSeeIp) + AltDisplay.banTag(lastIpBan != null));
-            } else if (lastIp != null) {
-                send(sender, "<gray>    ip:</gray> " + IpUtils.display(lastIp, canSeeIp) + AltDisplay.banTag(lastIpBan != null));
-            }
-
-            boolean linkedBanned = !PunishmentManager.get().getBannedAccountsOnIp(lastIp, member.getUuid()).isEmpty()
-                    || (differs && !PunishmentManager.get().getBannedAccountsOnIp(firstIp, member.getUuid()).isEmpty());
-            if (linkedBanned) {
-                send(sender, "<yellow>    ⚠ another account on one of these IPs is banned</yellow>");
-            }
+        for (TrackedPlayer member : members) {
+            send(sender, memberLine(member, group.getIp(), canSeeIp, onlineUuids, fullDate, shortDate));
         }
 
         if (showBackButton) {
-            send(sender, "<click:run_command:'/alts'><gray>[◀ Back to list]</gray></click>");
+            send(sender, "<click:run_command:'/alts'><gray>[◀]</gray></click>");
         }
+    }
+
+    private static List<TrackedPlayer> sortedMembers(List<TrackedPlayer> members, Set<String> onlineUuids) {
+        List<TrackedPlayer> sorted = new ArrayList<>(members);
+        sorted.sort((a, b) -> {
+            boolean aBan = isAccountBanned(a);
+            boolean bBan = isAccountBanned(b);
+            if (aBan != bBan) {
+                return aBan ? -1 : 1;
+            }
+            boolean aOn = isOnline(a, onlineUuids);
+            boolean bOn = isOnline(b, onlineUuids);
+            if (aOn != bOn) {
+                return aOn ? -1 : 1;
+            }
+            return Long.compare(b.getLastJoin(), a.getLastJoin());
+        });
+        return sorted;
+    }
+
+    private static String memberLine(TrackedPlayer member, String groupIp, boolean canSeeIp,
+                                     Set<String> onlineUuids, SimpleDateFormat fullDate, SimpleDateFormat shortDate) {
+        String name = memberName(member);
+        boolean banned = isAccountBanned(member);
+        boolean muted = member.getUuid() != null && PunishmentManager.get().isMuted(member.getUuid());
+        String nameColor = banned ? "red" : (isOnline(member, onlineUuids) ? "yellow" : "gray");
+        String dot = isOnline(member, onlineUuids) ? "<green>●</green>" : "<dark_gray>○</dark_gray>";
+
+        StringBuilder line = new StringBuilder();
+        line.append(dot).append(' ');
+        line.append("<hover:show_text:'").append(memberHover(member, canSeeIp, fullDate)).append("'>");
+        line.append("<click:run_command:'/check ").append(AltDisplay.hoverSafe(name)).append("'>");
+        line.append('<').append(nameColor).append('>').append(AltDisplay.hoverSafe(name)).append("</").append(nameColor).append('>');
+        line.append("</click></hover>");
+        line.append(AltDisplay.banTag(banned));
+        line.append(AltDisplay.muteTag(muted));
+        line.append(shortDateRange(member, shortDate));
+        line.append(otherIpBits(member, groupIp, canSeeIp));
+        return line.toString();
+    }
+
+    private static String shortDateRange(TrackedPlayer member, SimpleDateFormat shortDate) {
+        String first = formatTimestamp(shortDate, member.getFirstSeen());
+        long lastTs = member.getLastJoin() > 0 ? member.getLastJoin() : member.getLastLeave();
+        String last = formatTimestamp(shortDate, lastTs);
+        if ("never".equals(first) && "never".equals(last)) {
+            return "";
+        }
+        if (first.equals(last) || "never".equals(first)) {
+            return " <gray>" + last + "</gray>";
+        }
+        if ("never".equals(last)) {
+            return " <gray>" + first + "</gray>";
+        }
+        return " <gray>" + first + "→" + last + "</gray>";
+    }
+
+    private static String otherIpBits(TrackedPlayer member, String groupIp, boolean canSeeIp) {
+        String firstIp = member.getFirstIp();
+        String lastIp = member.getLastIp();
+        StringBuilder extra = new StringBuilder();
+        if (lastIp != null && !lastIp.equalsIgnoreCase(groupIp)) {
+            Punishment lastIpBan = PunishmentManager.get().getBan(lastIp);
+            extra.append(" <gray>now</gray> ").append(IpUtils.display(lastIp, canSeeIp)).append(AltDisplay.ipBanTag(lastIpBan != null));
+        }
+        if (firstIp != null && !firstIp.equalsIgnoreCase(groupIp) && (lastIp == null || !firstIp.equalsIgnoreCase(lastIp))) {
+            Punishment firstIpBan = PunishmentManager.get().getBan(firstIp);
+            extra.append(" <gray>was</gray> ").append(IpUtils.display(firstIp, canSeeIp)).append(AltDisplay.ipBanTag(firstIpBan != null));
+        }
+        return extra.toString();
+    }
+
+    private static String memberHover(TrackedPlayer member, boolean canSeeIp, SimpleDateFormat fullDate) {
+        String name = memberName(member);
+        return "<gray>/check " + AltDisplay.hoverSafe(name)
+                + "<br>first " + formatTimestamp(fullDate, member.getFirstSeen())
+                + "<br>last join " + formatTimestamp(fullDate, member.getLastJoin())
+                + "<br>last seen " + formatTimestamp(fullDate, member.getLastLeave())
+                + "<br>first ip " + IpUtils.display(member.getFirstIp(), canSeeIp)
+                + "<br>last ip " + IpUtils.display(member.getLastIp(), canSeeIp)
+                + "</gray>";
+    }
+
+    private static String reasonsHover(AltGroup group) {
+        StringBuilder hover = new StringBuilder("<gray>");
+        hover.append(AltDisplay.hoverSafe(group.getBand()));
+        if (group.getReasons() != null) {
+            for (String reason : group.getReasons()) {
+                hover.append("<br>• ").append(AltDisplay.hoverSafe(reason));
+            }
+        }
+        hover.append("</gray>");
+        return hover.toString();
+    }
+
+    private static String memberListHover(AltGroup group) {
+        StringBuilder hover = new StringBuilder("<gray>");
+        for (TrackedPlayer member : group.getMembers()) {
+            hover.append(AltDisplay.hoverSafe(memberName(member)));
+            if (isAccountBanned(member)) {
+                hover.append(" <red>[BAN]</red>");
+            }
+            hover.append("<br>");
+        }
+        hover.append("click for details</gray>");
+        return hover.toString();
+    }
+
+    private static String clickableNameList(List<String> names) {
+        StringBuilder out = new StringBuilder();
+        for (int i = 0; i < names.size(); i++) {
+            if (i > 0) {
+                out.append("<gray>, </gray>");
+            }
+            String name = names.get(i);
+            out.append("<hover:show_text:'<gray>/check ").append(AltDisplay.hoverSafe(name)).append("</gray>'>");
+            out.append("<click:run_command:'/check ").append(AltDisplay.hoverSafe(name)).append("'>");
+            out.append("<red>").append(AltDisplay.hoverSafe(name)).append("</red></click></hover>");
+        }
+        return out.toString();
+    }
+
+    private static List<String> bannedAccountNames(AltGroup group) {
+        List<String> names = new ArrayList<>();
+        for (TrackedPlayer member : group.getMembers()) {
+            if (isAccountBanned(member)) {
+                names.add(memberName(member));
+            }
+        }
+        return names;
+    }
+
+    private static boolean isAccountBanned(TrackedPlayer member) {
+        return member.getUuid() != null && PunishmentManager.get().isBanned(member.getUuid());
+    }
+
+    private static boolean isOnline(TrackedPlayer member, Set<String> onlineUuids) {
+        return member.getUuid() != null && onlineUuids.contains(member.getUuid());
+    }
+
+    private static String memberName(TrackedPlayer member) {
+        return member.getName() != null ? member.getName() : "unknown";
     }
 
     private void sendUsage(CommandSource sender) {

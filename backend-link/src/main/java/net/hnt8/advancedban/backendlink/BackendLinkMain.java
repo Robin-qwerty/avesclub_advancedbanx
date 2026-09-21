@@ -22,11 +22,21 @@ public class BackendLinkMain extends JavaPlugin {
         "unban", "unmute"
     );
     private BackendPunishmentListener punishmentListener;
+    private String linkName = "survival";
+
+    @Override
+    public void onLoad() {
+        instance = this;
+        BackendLinkConfigFiles.ensure(this);
+    }
 
     @Override
     public void onEnable() {
         instance = this;
-        
+        BackendLinkConfigFiles.ensure(this);
+        reloadConfig();
+        linkName = BackendLinkSettings.linkName(getConfig());
+
         // Check if the full Avesban plugin is loaded
         Plugin fullPlugin = Bukkit.getPluginManager().getPlugin("Avesban");
         if (fullPlugin != null && fullPlugin.isEnabled()) {
@@ -51,8 +61,10 @@ public class BackendLinkMain extends JavaPlugin {
                 getLogger().warning("Failed to register command: " + cmd);
             }
         }
+
+        BackendLinkRedis.start(this, BackendLinkSettings.redis(getConfig()), linkName);
         
-        getLogger().info("Avesban BackendLink enabled! Commands will be forwarded to Velocity proxy.");
+        getLogger().info("Avesban BackendLink enabled as '" + linkName + "'. Commands will be forwarded to Velocity.");
 
         // Keep mute state fairly fresh for online players (Folia: global + per-entity region).
         BackendLinkScheduler.scheduleRepeating(this, () -> {
@@ -64,6 +76,7 @@ public class BackendLinkMain extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        BackendLinkRedis.shutdown();
         getServer().getMessenger().unregisterOutgoingPluginChannel(this, CHANNEL);
         getServer().getMessenger().unregisterIncomingPluginChannel(this, CHANNEL);
         getLogger().info("Avesban BackendLink disabled!");
@@ -74,69 +87,52 @@ public class BackendLinkMain extends JavaPlugin {
     }
 
     /**
-     * Sends a command to the Velocity proxy via plugin messaging.
-     * The command will be executed on the proxy with the full command string.
+     * Sends a command to the Velocity proxy via Redis when enabled, otherwise plugin messaging.
      */
-    public void sendCommandToProxy(String command, String[] args) {
-        // Build the full command string
+    public void sendCommandToProxy(String command, String[] args, String operator) {
         StringBuilder fullCommand = new StringBuilder(command);
         for (String arg : args) {
             fullCommand.append(" ").append(arg);
         }
-        
-        // Send via plugin messaging to the proxy
-        // We need to find a player to send the message through (plugin messaging requires a player)
-        // If no players are online, we'll try to use the server connection directly
-        // Note: This is a limitation - plugin messaging typically requires a player connection
+
+        try {
+            if (BackendLinkRedis.publishCommand(command, args, operator, resolveServerName())) {
+                getLogger().fine("Sent command to proxy via Redis: " + fullCommand);
+                return;
+            }
+        } catch (Exception ex) {
+            getLogger().warning("Redis command publish failed, falling back to plugin messaging: " + ex.getMessage());
+        }
+
         if (Bukkit.getOnlinePlayers().isEmpty()) {
-            getLogger().warning("Cannot send command to proxy: No players online to relay message.");
+            getLogger().warning("Cannot send command to proxy: Redis is disabled and no players are online to relay a plugin message.");
             getLogger().warning("Command that failed: " + fullCommand.toString());
-            getLogger().warning("Tip: Ensure at least one player is online on this server for backend commands to work.");
             return;
         }
         
-        // Use the first online player to send the message
-        // The message will be relayed through this player's connection to the proxy
         org.bukkit.entity.Player relayPlayer = Bukkit.getOnlinePlayers().iterator().next();
         
         ByteArrayOutputStream byteOut = new ByteArrayOutputStream();
         DataOutputStream out = new DataOutputStream(byteOut);
         
         try {
-            // Get the server name - try to get from player's current server connection
-            // If player is connected through Velocity, we can get the server name from their connection
-            String serverName = null;
-            if (relayPlayer instanceof org.bukkit.entity.Player) {
-                // Try to get server name from BungeeCord/Velocity plugin messaging
-                // For now, use a fallback approach
-                serverName = relayPlayer.getServer() != null ? relayPlayer.getServer().getName() : null;
-            }
-            
-            // Fallback: try system properties or environment variables
-            if (serverName == null || serverName.isEmpty()) {
-                serverName = System.getProperty("server.name");
-            }
-            if (serverName == null || serverName.isEmpty()) {
-                serverName = System.getenv("SERVER_NAME");
-            }
-            if (serverName == null || serverName.isEmpty()) {
-                // Final fallback: use server address or default
-                String address = Bukkit.getServer().getIp();
-                int port = Bukkit.getServer().getPort();
-                serverName = (address != null && !address.isEmpty()) ? address + ":" + port : "backend-server";
-            }
+            String serverName = resolveServerName();
             
             out.writeUTF("EXECUTE_COMMAND");
             out.writeUTF(fullCommand.toString());
-            out.writeUTF(serverName); // Include server name in the message
+            out.writeUTF(serverName);
             
             relayPlayer.sendPluginMessage(this, CHANNEL, byteOut.toByteArray());
             
             getLogger().fine("Sent command to proxy: " + fullCommand.toString() + " from server: " + serverName);
         } catch (IOException e) {
-            getLogger().severe("Failed to send command to proxy: " + e.getMessage());
+            getLogger().severe("Failed to send plugin message to proxy: " + e.getMessage());
             e.printStackTrace();
         }
+    }
+
+    public void sendCommandToProxy(String command, String[] args) {
+        sendCommandToProxy(command, args, "CONSOLE");
     }
 
     public void requestPunishmentStatus(Player player) {
@@ -157,6 +153,9 @@ public class BackendLinkMain extends JavaPlugin {
     }
 
     private String resolveServerName() {
+        if (linkName != null && !linkName.isEmpty()) {
+            return linkName;
+        }
         String serverName = Bukkit.getServer().getName();
         if (serverName == null || serverName.isEmpty()) {
             serverName = System.getProperty("server.name");
@@ -172,4 +171,3 @@ public class BackendLinkMain extends JavaPlugin {
         return serverName;
     }
 }
-

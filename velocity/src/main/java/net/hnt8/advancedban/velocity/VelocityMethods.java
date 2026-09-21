@@ -13,7 +13,9 @@ import net.hnt8.advancedban.manager.PunishmentManager;
 import net.hnt8.advancedban.manager.UUIDManager;
 import net.hnt8.advancedban.utils.Permissionable;
 import net.hnt8.advancedban.utils.Punishment;
+import net.hnt8.advancedban.utils.ConfigMigrator;
 import net.hnt8.advancedban.utils.tabcompletion.TabCompleter;
+import net.hnt8.advancedban.utils.YamlColonQuoter;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TextReplacementConfig;
 import net.kyori.adventure.text.minimessage.MiniMessage;
@@ -68,13 +70,48 @@ public class VelocityMethods implements MethodInterface {
             copyResourceIfMissing("Messages.yml", messageFile);
             copyResourceIfMissing("Layouts.yml", layoutFile);
 
+            getLogger().info("Avesban config folder: " + getDataFolder().getAbsolutePath());
+            mergeMissingFromJar("config.yml", configFile);
+
+            YamlColonQuoter.quoteUnquotedColonValues(configFile, getLogger());
+            if (messageFile.exists()) {
+                YamlColonQuoter.quoteUnquotedColonValues(messageFile, getLogger());
+            }
+            if (layoutFile.exists()) {
+                YamlColonQuoter.quoteUnquotedColonValues(layoutFile, getLogger());
+            }
+            if (mysqlFile.exists()) {
+                YamlColonQuoter.quoteUnquotedColonValues(mysqlFile, getLogger());
+            }
+
             config = loadYamlMap(configFile);
             messages = loadYamlMap(messageFile);
             layouts = loadYamlMap(layoutFile);
             mysql = mysqlFile.exists() ? loadYamlMap(mysqlFile) : config;
-        } catch (IOException ex) {
+        } catch (Exception ex) {
             getLogger().severe("Failed to load velocity configuration files: " + ex.getMessage());
             Universal.get().debugException(ex);
+        }
+    }
+
+    private void mergeMissingFromJar(String resourceName, File diskFile) {
+        InputStream stream = getPlugin().getClass().getClassLoader().getResourceAsStream(resourceName);
+        if (stream == null) {
+            getLogger().warning("Missing jar default " + resourceName + "; cannot add new config keys.");
+            return;
+        }
+        try {
+            List<String> added = ConfigMigrator.mergeMissingKeys(diskFile, stream, getLogger());
+            if (!added.isEmpty()) {
+                getLogger().info("Added missing " + resourceName + " keys: " + added);
+            }
+        } catch (Exception ex) {
+            getLogger().warning("Could not add missing keys to " + resourceName + ": " + ex.getMessage());
+        } finally {
+            try {
+                stream.close();
+            } catch (IOException ignored) {
+            }
         }
     }
 
@@ -275,6 +312,9 @@ public class VelocityMethods implements MethodInterface {
         if (player instanceof Player) {
             return ((Player) player).getUsername();
         }
+        if (player instanceof net.hnt8.advancedban.velocity.redis.WebCommandSource) {
+            return ((net.hnt8.advancedban.velocity.redis.WebCommandSource) player).getOperatorName();
+        }
         return "CONSOLE";
     }
 
@@ -452,10 +492,16 @@ public class VelocityMethods implements MethodInterface {
 
     @Override
     public void callPunishmentEvent(Punishment punishment) {
+        if (VelocityMain.get().getRedisService() != null) {
+            VelocityMain.get().getRedisService().voiceMutes().onPunishmentCreated(punishment);
+        }
     }
 
     @Override
     public void callRevokePunishmentEvent(Punishment punishment, boolean massClear) {
+        if (VelocityMain.get().getRedisService() != null) {
+            VelocityMain.get().getRedisService().voiceMutes().onPunishmentRevoked(punishment);
+        }
     }
 
     @Override

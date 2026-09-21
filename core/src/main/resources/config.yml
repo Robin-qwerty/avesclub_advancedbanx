@@ -153,3 +153,39 @@ Disable Prefix: false
 # Off by default, so AdvancedBan can override /ban from other plugins
 # This is a Bukkit-specific option. It has no meaning on BungeeCord
 Friendly Register Commands: false
+
+# Redis pub/sub used by the web panel (Laravel) and BackendLink plugins.
+# The website must only READ MySQL. Every ban/mute/unban goes through Redis to this proxy.
+# See docs/WEBPANEL.md for the JSON protocol.
+Redis:
+  Enabled: false
+  Host: 127.0.0.1
+  Port: 6379
+  Password: ''
+  Database: 0
+  # Shared secret. Laravel and every BackendLink must send the same token.
+  AuthToken: 'change-me'
+  # Drop messages older than this (clock skew / replay).
+  MaxAgeMs: 60000
+  Channels:
+    # Quote these: YAML treats a trailing ':' as syntax (Bukkit: "cannot load configuration from stream ':'").
+    ProxyIn: 'avesban:proxy:in'
+    ProxyOut: 'avesban:proxy:out'
+    LinkAcks: 'avesban:link:acks'
+    LinkPrefix: 'avesban:link:'
+    # Optional key prefix so Laravel can GET the ACK without winning a pub/sub race.
+    AckKeyPrefix: 'avesban:ack:'
+
+# Named BackendLink instances (Paper/Folia). Velocity sends voice-mute LuckPerms
+# RPC to Primary; if that link does not ACK in time, Secondary is tried once.
+BackendLinks:
+  Primary: survival
+  Secondary: lobby
+  FailoverTimeoutMs: 1500
+
+# When a player is muted/tempmuted, Velocity asks one BackendLink to set this
+# LuckPerms permission via the LuckPerms API (not by writing LuckPerms SQL).
+VoiceMute:
+  Enabled: true
+  Permission: voicechat.speak
+  Value: false

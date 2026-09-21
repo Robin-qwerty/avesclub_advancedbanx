@@ -74,6 +74,13 @@
             <version>4.17.0</version>
         </dependency>
 
+        <dependency>
+            <groupId>redis.clients</groupId>
+            <artifactId>jedis</artifactId>
+            <version>4.4.8</version>
+            <scope>compile</scope>
+        </dependency>
+
         <!-- These are provided by Velocity at runtime, but we need them for compilation -->
         <!-- Velocity 3.5.0-SNAPSHOT should include these transitively through velocity-api -->
         <!-- If compilation fails, these will be available at runtime from Velocity -->
@@ -111,6 +118,26 @@
                         <relocation>
                             <pattern>com.googlecode.json.simple</pattern>
                             <shadedPattern>${project.groupId}.shaded.com.googlecode.json.simple</shadedPattern>
+                        </relocation>
+                        <relocation>
+                            <pattern>redis.clients.jedis</pattern>
+                            <shadedPattern>${project.groupId}.shaded.redis.clients.jedis</shadedPattern>
+                        </relocation>
+                        <relocation>
+                            <pattern>redis.clients.authentication</pattern>
+                            <shadedPattern>${project.groupId}.shaded.redis.clients.authentication</shadedPattern>
+                        </relocation>
+                        <relocation>
+                            <pattern>org.apache.commons.pool2</pattern>
+                            <shadedPattern>${project.groupId}.shaded.org.apache.commons.pool2</shadedPattern>
+                        </relocation>
+                        <relocation>
+                            <pattern>net.minidev</pattern>
+                            <shadedPattern>${project.groupId}.shaded.net.minidev</shadedPattern>
+                        </relocation>
+                        <relocation>
+                            <pattern>org.json</pattern>
+                            <shadedPattern>${project.groupId}.shaded.org.json</shadedPattern>
                         </relocation>
                     </relocations>
                     <transformers>

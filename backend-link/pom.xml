@@ -19,6 +19,10 @@
             <id>spigot-repo</id>
             <url>https://hub.spigotmc.org/nexus/content/repositories/snapshots/</url>
         </repository>
+        <repository>
+            <id>luckperms</id>
+            <url>https://repo.luckperms.net/</url>
+        </repository>
     </repositories>
 
     <dependencies>
@@ -34,6 +38,32 @@
                 </exclusion>
             </exclusions>
         </dependency>
+
+        <dependency>
+            <groupId>net.luckperms</groupId>
+            <artifactId>api</artifactId>
+            <version>5.4</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>net.hnt8.advancedban</groupId>
+            <artifactId>Avesban-Core</artifactId>
+            <version>${project.version}</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>*</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
+        <dependency>
+            <groupId>redis.clients</groupId>
+            <artifactId>jedis</artifactId>
+            <version>4.4.8</version>
+            <scope>compile</scope>
+        </dependency>
     </dependencies>
 
     <build>
@@ -44,6 +74,54 @@
                 <version>3.6.0</version>
                 <configuration>
                     <finalName>${project.artifactId}-${project.version}-${build}</finalName>
+                    <artifactSet>
+                        <excludes>
+                            <exclude>com.google.code.gson:gson</exclude>
+                            <exclude>com.google.errorprone:error_prone_annotations</exclude>
+                        </excludes>
+                    </artifactSet>
+                    <filters>
+                        <filter>
+                            <artifact>net.hnt8.advancedban:Avesban-BackendLink</artifact>
+                            <includes>
+                                <include>**</include>
+                            </includes>
+                        </filter>
+                        <filter>
+                            <artifact>net.hnt8.advancedban:Avesban-Core</artifact>
+                            <includes>
+                                <include>net/hnt8/advancedban/redis/**</include>
+                                <include>net/hnt8/advancedban/utils/ConfigMigrator*</include>
+                                <include>net/hnt8/advancedban/utils/YamlColonQuoter*</include>
+                            </includes>
+                        </filter>
+                    </filters>
+                    <relocations>
+                        <relocation>
+                            <pattern>redis.clients.jedis</pattern>
+                            <shadedPattern>${project.groupId}.shaded.redis.clients.jedis</shadedPattern>
+                        </relocation>
+                        <relocation>
+                            <pattern>redis.clients.authentication</pattern>
+                            <shadedPattern>${project.groupId}.shaded.redis.clients.authentication</shadedPattern>
+                        </relocation>
+                        <relocation>
+                            <pattern>org.apache.commons.pool2</pattern>
+                            <shadedPattern>${project.groupId}.shaded.org.apache.commons.pool2</shadedPattern>
+                        </relocation>
+                        <relocation>
+                            <pattern>net.minidev</pattern>
+                            <shadedPattern>${project.groupId}.shaded.net.minidev</shadedPattern>
+                        </relocation>
+                        <relocation>
+                            <pattern>org.json</pattern>
+                            <shadedPattern>${project.groupId}.shaded.org.json</shadedPattern>
+                        </relocation>
+                        <relocation>
+                            <pattern>org.slf4j</pattern>
+                            <shadedPattern>${project.groupId}.shaded.org.slf4j</shadedPattern>
+                        </relocation>
+                    </relocations>
                 </configuration>
                 <executions>
                     <execution>
@@ -57,4 +135,3 @@
         </plugins>
     </build>
 </project>
-

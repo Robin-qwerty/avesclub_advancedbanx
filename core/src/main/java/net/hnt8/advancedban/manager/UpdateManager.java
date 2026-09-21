@@ -2,12 +2,12 @@ package net.hnt8.advancedban.manager;
 
 import net.hnt8.advancedban.MethodInterface;
 import net.hnt8.advancedban.Universal;
+import net.hnt8.advancedban.utils.ConfigMigrator;
 import org.apache.commons.io.FileUtils;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.charset.Charset;
-import java.util.Arrays;
+import java.io.InputStream;
 import java.util.List;
 
 
@@ -35,6 +35,31 @@ public class UpdateManager {
         MethodInterface mi = Universal.get().getMethods();
 
         if (mi.isUnitTesting()) {
+            return;
+        }
+
+        migrate("config.yml", new File(mi.getDataFolder(), "config.yml"), mi);
+        mi.loadFiles();
+    }
+
+    private void migrate(String resourceName, File diskFile, MethodInterface mi) {
+        InputStream defaults = UpdateManager.class.getClassLoader().getResourceAsStream(resourceName);
+        if (defaults == null) {
+            mi.getLogger().warning("Could not find default " + resourceName + " in the plugin jar; skipping config merge.");
+            return;
+        }
+        try {
+            List<String> added = ConfigMigrator.mergeMissingKeys(diskFile, defaults, mi.getLogger());
+            if (!added.isEmpty()) {
+                mi.getLogger().info("Updated " + resourceName + " with " + added.size() + " missing key(s). Existing values were kept.");
+            }
+        } catch (Exception ex) {
+            mi.getLogger().warning("Could not merge missing keys into " + resourceName + ": " + ex.getMessage());
+        } finally {
+            try {
+                defaults.close();
+            } catch (IOException ignored) {
+            }
         }
     }
 

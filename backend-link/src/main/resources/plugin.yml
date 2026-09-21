@@ -5,7 +5,7 @@ api-version: 1.13
 folia-supported: true
 description: Backend link plugin for Avesban - forwards ban commands to Velocity proxy
 author: Leoko, 2vY, Robinaves
-softdepend: [Avesban]
+softdepend: [Avesban, LuckPerms]
 
 # Permissions are checked in BackendCommandExecutor (accepting both the current
 # "avesban." nodes and the legacy "ab." nodes) rather than declared here, since a

@@ -22,6 +22,24 @@ public final class AltDisplay {
     }
 
     public static String banTag(boolean banned) {
-        return banned ? " <red>[BANNED]</red>" : "";
+        return banned ? " <red>[BAN]</red>" : "";
+    }
+
+    public static String muteTag(boolean muted) {
+        return muted ? " <gold>[MUTE]</gold>" : "";
+    }
+
+    public static String ipBanTag(boolean banned) {
+        return banned ? " <red>[IPBAN]</red>" : "";
+    }
+
+    /**
+     * MiniMessage hover/click strings are single-quoted; a raw {@code '} would close them.
+     */
+    public static String hoverSafe(String text) {
+        if (text == null || text.isEmpty()) {
+            return "";
+        }
+        return text.replace("\\", "").replace("'", "’");
     }
 }

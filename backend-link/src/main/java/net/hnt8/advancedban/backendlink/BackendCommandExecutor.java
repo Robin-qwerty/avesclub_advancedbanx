@@ -47,7 +47,7 @@ public class BackendCommandExecutor implements CommandExecutor {
         }
 
         // Forward the command to the proxy
-        BackendLinkMain.getInstance().sendCommandToProxy(commandName, args);
+        BackendLinkMain.getInstance().sendCommandToProxy(commandName, args, sender.getName());
 
         // Don't send any response - the proxy will handle that
         // This prevents duplicate messages

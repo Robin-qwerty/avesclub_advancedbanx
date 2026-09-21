@@ -11,6 +11,8 @@ import net.hnt8.advancedban.manager.PunishmentManager;
 import net.hnt8.advancedban.manager.UUIDManager;
 import net.hnt8.advancedban.utils.Permissionable;
 import net.hnt8.advancedban.utils.Punishment;
+import net.hnt8.advancedban.utils.ConfigMigrator;
+import net.hnt8.advancedban.utils.YamlColonQuoter;
 import net.hnt8.advancedban.utils.tabcompletion.TabCompleter;
 import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.platform.bukkit.BukkitAudiences;
@@ -74,6 +76,19 @@ public class BukkitMethods implements MethodInterface {
         }
         if (!layoutFile.exists()) {
             getPlugin().saveResource("Layouts.yml", true);
+        }
+
+        YamlColonQuoter.quoteUnquotedColonValues(configFile, getLogger());
+        InputStream defaults = getPlugin().getResource("config.yml");
+        if (defaults != null) {
+            try {
+                ConfigMigrator.mergeMissingKeys(configFile, defaults, getLogger());
+            } finally {
+                try {
+                    defaults.close();
+                } catch (IOException ignored) {
+                }
+            }
         }
 
         try {

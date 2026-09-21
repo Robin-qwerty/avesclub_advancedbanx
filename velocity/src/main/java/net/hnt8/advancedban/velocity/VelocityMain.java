@@ -8,6 +8,7 @@ import com.velocitypowered.api.plugin.Plugin;
 import com.velocitypowered.api.plugin.annotation.DataDirectory;
 import com.velocitypowered.api.proxy.ProxyServer;
 import net.hnt8.advancedban.Universal;
+import net.hnt8.advancedban.redis.RedisSettings;
 import net.hnt8.advancedban.velocity.alts.AltJoinAlertListener;
 import net.hnt8.advancedban.velocity.alts.AltsCommand;
 import net.hnt8.advancedban.velocity.alts.RecentPlayerCache;
@@ -15,6 +16,7 @@ import net.hnt8.advancedban.velocity.listener.BackendCommandListener;
 import net.hnt8.advancedban.velocity.listener.ChatListenerVelocity;
 import net.hnt8.advancedban.velocity.listener.ConnectionListenerVelocity;
 import net.hnt8.advancedban.velocity.listener.ServerConnectListener;
+import net.hnt8.advancedban.velocity.redis.RedisService;
 
 import java.nio.file.Path;
 import java.util.logging.Logger;
@@ -33,6 +35,7 @@ public class VelocityMain {
     private final ProxyServer server;
     private final Logger logger;
     private final Path dataDirectory;
+    private RedisService redisService;
 
     @Inject
     public VelocityMain(ProxyServer server, Logger logger, @DataDirectory Path dataDirectory) {
@@ -58,9 +61,14 @@ public class VelocityMain {
         return dataDirectory;
     }
 
+    public RedisService getRedisService() {
+        return redisService;
+    }
+
     @Subscribe
     public void onProxyInitialization(ProxyInitializeEvent event) {
         Universal.get().setup(new VelocityMethods());
+        redisService = RedisService.start(RedisSettings.fromMethods(Universal.get().getMethods()));
 
         server.getEventManager().register(this, new ConnectionListenerVelocity());
         server.getEventManager().register(this, new ChatListenerVelocity());
@@ -80,6 +88,10 @@ public class VelocityMain {
 
     @Subscribe
     public void onProxyShutdown(ProxyShutdownEvent event) {
+        if (redisService != null) {
+            redisService.shutdown();
+            redisService = null;
+        }
         Universal.get().shutdown();
         logger.info("Avesban has been disabled!");
     }

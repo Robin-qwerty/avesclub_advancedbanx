@@ -16,8 +16,10 @@ import net.hnt8.advancedban.bungee.utils.BungeeMetrics;
 import net.hnt8.advancedban.manager.DatabaseManager;
 import net.hnt8.advancedban.manager.PunishmentManager;
 import net.hnt8.advancedban.manager.UUIDManager;
+import net.hnt8.advancedban.utils.ConfigMigrator;
 import net.hnt8.advancedban.utils.Permissionable;
 import net.hnt8.advancedban.utils.Punishment;
+import net.hnt8.advancedban.utils.YamlColonQuoter;
 import net.hnt8.advancedban.utils.tabcompletion.TabCompleter;
 import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.platform.bungeecord.BungeeAudiences;
@@ -37,6 +39,7 @@ import net.md_5.bungee.config.YamlConfiguration;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
@@ -96,6 +99,10 @@ public class BungeeMethods implements MethodInterface {
                 Files.copy(getPlugin().getResourceAsStream("Layouts.yml"), layoutFile.toPath());
             }
 
+            getLogger().info("Avesban config folder: " + getDataFolder().getAbsolutePath());
+            mergeMissingFromJar("config.yml", configFile);
+            YamlColonQuoter.quoteUnquotedColonValues(configFile, getLogger());
+
             config = ConfigurationProvider.getProvider(YamlConfiguration.class).load(configFile);
             messages = ConfigurationProvider.getProvider(YamlConfiguration.class).load(messageFile);
             layouts = ConfigurationProvider.getProvider(YamlConfiguration.class).load(layoutFile);
@@ -105,10 +112,32 @@ public class BungeeMethods implements MethodInterface {
             } else {
                 mysql = ConfigurationProvider.getProvider(YamlConfiguration.class).load(configFile);
             }
-        } catch (IOException e) {
-            e.printStackTrace();
+        } catch (Exception e) {
+            getLogger().severe("Failed to load bungee configuration files: " + e.getMessage());
+            Universal.get().debugException(e);
         }
 
+    }
+
+    private void mergeMissingFromJar(String resourceName, File diskFile) {
+        InputStream stream = getPlugin().getResourceAsStream(resourceName);
+        if (stream == null) {
+            getLogger().warning("Missing jar default " + resourceName + "; cannot add new config keys.");
+            return;
+        }
+        try {
+            List<String> added = ConfigMigrator.mergeMissingKeys(diskFile, stream, getLogger());
+            if (!added.isEmpty()) {
+                getLogger().info("Added missing " + resourceName + " keys: " + added);
+            }
+        } catch (Exception ex) {
+            getLogger().warning("Could not add missing keys to " + resourceName + ": " + ex.getMessage());
+        } finally {
+            try {
+                stream.close();
+            } catch (IOException ignored) {
+            }
+        }
     }
 
     @Override

@@ -1,0 +1,23 @@
+# Avesban BackendLink
+# Give every backend a unique LinkName. Velocity routes voice-mute Redis RPCs
+# to avesban:link:<LinkName>. LuckPerms is applied through the LuckPerms plugin API
+# on this server only (primary/secondary failover is decided on Velocity).
+
+LinkName: survival
+
+Redis:
+  Enabled: false
+  Host: 127.0.0.1
+  Port: 6379
+  Password: ''
+  Database: 0
+  AuthToken: 'change-me'
+  MaxAgeMs: 60000
+  Channels:
+    # Quote these: YAML treats a trailing ':' as syntax (Bukkit: "cannot load configuration from stream ':'").
+    ProxyIn: 'avesban:proxy:in'
+    LinkAcks: 'avesban:link:acks'
+    LinkPrefix: 'avesban:link:'
+
+VoiceMute:
+  Enabled: true
