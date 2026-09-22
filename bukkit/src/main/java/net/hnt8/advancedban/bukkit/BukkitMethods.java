@@ -186,7 +186,7 @@ public class BukkitMethods implements MethodInterface {
             command.setExecutor(CommandReceiver.get());
             if (tabCompleter != null)
                 command.setTabCompleter((commandSender, c, s, args) -> {
-                    if (permission != null && !hasPerms(commandSender, permission))
+                    if (permission != null && !Universal.get().hasPerms(commandSender, permission))
                         return Collections.emptyList();
                     return tabCompleter.onTabComplete(commandSender, args);
                 });

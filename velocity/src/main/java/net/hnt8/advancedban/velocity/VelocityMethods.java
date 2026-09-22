@@ -245,7 +245,14 @@ public class VelocityMethods implements MethodInterface {
 
     @Override
     public boolean hasPerms(Object player, String perms) {
-        return player instanceof CommandSource && ((CommandSource) player).hasPermission(perms);
+        if (!(player instanceof CommandSource)) {
+            return false;
+        }
+        CommandSource source = (CommandSource) player;
+        if (source.hasPermission(perms)) {
+            return true;
+        }
+        return LuckPermsPermissions.hasIgnoringServerContext(source, perms);
     }
 
     @Override

@@ -3,6 +3,7 @@ package net.hnt8.advancedban.velocity;
 import com.velocitypowered.api.command.CommandSource;
 import com.velocitypowered.api.command.SimpleCommand;
 import com.velocitypowered.api.proxy.Player;
+import net.hnt8.advancedban.Universal;
 import net.hnt8.advancedban.manager.CommandManager;
 import net.hnt8.advancedban.utils.tabcompletion.TabCompleter;
 
@@ -38,16 +39,29 @@ public class CommandReceiverVelocity implements SimpleCommand {
 
     @Override
     public List<String> suggest(Invocation invocation) {
-        if (permission != null && !invocation.source().hasPermission(permission)) {
+        if (!canUse(invocation.source())) {
             return Collections.emptyList();
         }
-
+        if (tabCompleter == null) {
+            return Collections.emptyList();
+        }
         return tabCompleter.onTabComplete(invocation.source(), invocation.arguments());
     }
 
     @Override
     public boolean hasPermission(Invocation invocation) {
-        return permission == null || invocation.source().hasPermission(permission);
+        return canUse(invocation.source());
+    }
+
+    /**
+     * Same check as command execution ({@link Universal#hasPerms}): current
+     * {@code avesban.} nodes, legacy {@code ab.} nodes, optional {@code .all}
+     * parents, and LuckPerms grants that are scoped to a backend server.
+     * A raw {@code CommandSource#hasPermission} check would leave the command
+     * red with no layout/player tab-complete for staff who can still run it.
+     */
+    private boolean canUse(CommandSource source) {
+        return permission == null || Universal.get().hasPerms(source, permission);
     }
 }
 

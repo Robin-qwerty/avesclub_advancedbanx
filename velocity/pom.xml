@@ -51,6 +51,10 @@
             <id>CodeMC</id>
             <url>https://repo.codemc.org/repository/maven-public</url>
         </repository>
+        <repository>
+            <id>luckperms</id>
+            <url>https://repo.luckperms.net/</url>
+        </repository>
     </repositories>
 
     <dependencies>
@@ -79,6 +83,13 @@
             <artifactId>jedis</artifactId>
             <version>4.4.8</version>
             <scope>compile</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>net.luckperms</groupId>
+            <artifactId>api</artifactId>
+            <version>5.4</version>
+            <scope>provided</scope>
         </dependency>
 
         <!-- These are provided by Velocity at runtime, but we need them for compilation -->

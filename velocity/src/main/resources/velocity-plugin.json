@@ -5,6 +5,11 @@
   "description": "Advanced punishment system for Velocity",
   "authors": ["Leoko", "2vY", "Robinaves"],
   "main": "net.hnt8.advancedban.velocity.VelocityMain",
-  "dependencies": []
+  "dependencies": [
+    {
+      "id": "luckperms",
+      "optional": true
+    }
+  ]
 }
 

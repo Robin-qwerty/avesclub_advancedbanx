@@ -56,7 +56,10 @@ public class BackendLinkMain extends JavaPlugin {
         for (String cmd : COMMANDS) {
             PluginCommand command = getCommand(cmd);
             if (command != null) {
-                command.setExecutor(new BackendCommandExecutor(cmd));
+                BackendCommandExecutor executor = new BackendCommandExecutor(cmd);
+                command.setExecutor(executor);
+                command.setTabCompleter(executor);
+                command.setPermission(null);
             } else {
                 getLogger().warning("Failed to register command: " + cmd);
             }
