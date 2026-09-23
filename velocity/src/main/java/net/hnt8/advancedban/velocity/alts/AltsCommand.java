@@ -155,14 +155,16 @@ public class AltsCommand implements SimpleCommand {
                 + AltDisplay.scoreSpan(group.getScore(), group.getScore() + "%")
                 + "</hover> <white>" + ipDisplay + "</white>"
                 + AltDisplay.ipBanTag(ipBan != null)
-                + " <gray>" + members.size() + " acc</gray>");
+                + " <gray>" + members.size() + " accounts</gray>"
+                + " <dark_gray>" + AltDisplay.hoverSafe(group.getBand()) + "</dark_gray>");
 
         if (!banned.isEmpty()) {
             send(sender, "<red>Banned:</red> " + clickableNameList(banned));
         }
 
         for (TrackedPlayer member : members) {
-            send(sender, memberLine(member, group.getIp(), canSeeIp, onlineUuids, fullDate, shortDate));
+            send(sender, memberLine(member, canSeeIp, onlineUuids, fullDate, shortDate));
+            send(sender, memberIpLine(member, canSeeIp));
         }
 
         if (showBackButton) {
@@ -188,56 +190,59 @@ public class AltsCommand implements SimpleCommand {
         return sorted;
     }
 
-    private static String memberLine(TrackedPlayer member, String groupIp, boolean canSeeIp,
-                                     Set<String> onlineUuids, SimpleDateFormat fullDate, SimpleDateFormat shortDate) {
+    private static String memberLine(TrackedPlayer member, boolean canSeeIp, Set<String> onlineUuids,
+                                     SimpleDateFormat fullDate, SimpleDateFormat shortDate) {
         String name = memberName(member);
         boolean banned = isAccountBanned(member);
         boolean muted = member.getUuid() != null && PunishmentManager.get().isMuted(member.getUuid());
-        String nameColor = banned ? "red" : (isOnline(member, onlineUuids) ? "yellow" : "gray");
-        String dot = isOnline(member, onlineUuids) ? "<green>●</green>" : "<dark_gray>○</dark_gray>";
+        boolean online = isOnline(member, onlineUuids);
+        String nameColor = banned ? "red" : "white";
+        String status = online ? "<green>● online</green>" : "<dark_gray>○ offline</dark_gray>";
 
         StringBuilder line = new StringBuilder();
-        line.append(dot).append(' ');
+        line.append(status).append(' ');
         line.append("<hover:show_text:'").append(memberHover(member, canSeeIp, fullDate)).append("'>");
         line.append("<click:run_command:'/check ").append(AltDisplay.hoverSafe(name)).append("'>");
         line.append('<').append(nameColor).append('>').append(AltDisplay.hoverSafe(name)).append("</").append(nameColor).append('>');
         line.append("</click></hover>");
         line.append(AltDisplay.banTag(banned));
         line.append(AltDisplay.muteTag(muted));
-        line.append(shortDateRange(member, shortDate));
-        line.append(otherIpBits(member, groupIp, canSeeIp));
+        line.append(visibleDates(member, shortDate));
         return line.toString();
     }
 
-    private static String shortDateRange(TrackedPlayer member, SimpleDateFormat shortDate) {
+    private static String visibleDates(TrackedPlayer member, SimpleDateFormat shortDate) {
         String first = formatTimestamp(shortDate, member.getFirstSeen());
-        long lastTs = member.getLastJoin() > 0 ? member.getLastJoin() : member.getLastLeave();
-        String last = formatTimestamp(shortDate, lastTs);
-        if ("never".equals(first) && "never".equals(last)) {
-            return "";
+        String lastJoin = formatTimestamp(shortDate, member.getLastJoin());
+        String lastSeen = formatTimestamp(shortDate, member.getLastLeave());
+        StringBuilder dates = new StringBuilder();
+        dates.append(" <gray>first</gray> ").append(first);
+        dates.append(" <gray>join</gray> ").append(lastJoin);
+        if (!"never".equals(lastSeen) && !lastSeen.equals(lastJoin)) {
+            dates.append(" <gray>seen</gray> ").append(lastSeen);
         }
-        if (first.equals(last) || "never".equals(first)) {
-            return " <gray>" + last + "</gray>";
-        }
-        if ("never".equals(last)) {
-            return " <gray>" + first + "</gray>";
-        }
-        return " <gray>" + first + "→" + last + "</gray>";
+        return dates.toString();
     }
 
-    private static String otherIpBits(TrackedPlayer member, String groupIp, boolean canSeeIp) {
+    private static String memberIpLine(TrackedPlayer member, boolean canSeeIp) {
         String firstIp = member.getFirstIp();
         String lastIp = member.getLastIp();
-        StringBuilder extra = new StringBuilder();
-        if (lastIp != null && !lastIp.equalsIgnoreCase(groupIp)) {
-            Punishment lastIpBan = PunishmentManager.get().getBan(lastIp);
-            extra.append(" <gray>now</gray> ").append(IpUtils.display(lastIp, canSeeIp)).append(AltDisplay.ipBanTag(lastIpBan != null));
+        boolean same = firstIp != null && lastIp != null && firstIp.equalsIgnoreCase(lastIp);
+        Punishment lastIpBan = lastIp != null ? PunishmentManager.get().getBan(lastIp) : null;
+        Punishment firstIpBan = firstIp != null ? PunishmentManager.get().getBan(firstIp) : null;
+
+        StringBuilder line = new StringBuilder("  ");
+        if (same || lastIp == null) {
+            String ip = lastIp != null ? lastIp : firstIp;
+            Punishment ipBan = lastIp != null ? lastIpBan : firstIpBan;
+            line.append("<gray>ip</gray> ").append(IpUtils.display(ip, canSeeIp)).append(AltDisplay.ipBanTag(ipBan != null));
+        } else if (firstIp == null) {
+            line.append("<gray>last-ip</gray> ").append(IpUtils.display(lastIp, canSeeIp)).append(AltDisplay.ipBanTag(lastIpBan != null));
+        } else {
+            line.append("<gray>first-ip</gray> ").append(IpUtils.display(firstIp, canSeeIp)).append(AltDisplay.ipBanTag(firstIpBan != null));
+            line.append(" <gray>last-ip</gray> ").append(IpUtils.display(lastIp, canSeeIp)).append(AltDisplay.ipBanTag(lastIpBan != null));
         }
-        if (firstIp != null && !firstIp.equalsIgnoreCase(groupIp) && (lastIp == null || !firstIp.equalsIgnoreCase(lastIp))) {
-            Punishment firstIpBan = PunishmentManager.get().getBan(firstIp);
-            extra.append(" <gray>was</gray> ").append(IpUtils.display(firstIp, canSeeIp)).append(AltDisplay.ipBanTag(firstIpBan != null));
-        }
-        return extra.toString();
+        return line.toString();
     }
 
     private static String memberHover(TrackedPlayer member, boolean canSeeIp, SimpleDateFormat fullDate) {

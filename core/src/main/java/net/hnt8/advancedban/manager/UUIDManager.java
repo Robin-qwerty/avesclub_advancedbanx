@@ -2,13 +2,20 @@ package net.hnt8.advancedban.manager;
 
 import net.hnt8.advancedban.MethodInterface;
 import net.hnt8.advancedban.Universal;
+import net.hnt8.advancedban.utils.TrackedPlayer;
 
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Scanner;
+import java.util.UUID;
 
 /**
  * The UUID Manager used to resolve and cache the UUIDs.
@@ -66,15 +73,44 @@ public class UUIDManager {
      * @return the uuid
      */
     public String getInitialUUID(String name) {
-    	MethodInterface mi = mi();
+        MethodInterface mi = mi();
         name = name.toLowerCase();
-        if (mode == FetcherMode.DISABLED)
-            return name;
+        boolean floodgate = isFloodgateName(name);
 
-        if (mode == FetcherMode.INTERN || mode == FetcherMode.MIXED) {
-            String internUUID = mi.getInternUUID(name);
-            if (mode == FetcherMode.INTERN || internUUID != null)
-                return internUUID;
+        if (mode == FetcherMode.DISABLED && !floodgate) {
+            return name;
+        }
+
+        if (mode == FetcherMode.INTERN || mode == FetcherMode.MIXED || floodgate) {
+            for (String variant : nameVariants(name)) {
+                String internUUID = mi.getInternUUID(variant);
+                if (internUUID != null) {
+                    remember(name, internUUID);
+                    return internUUID;
+                }
+            }
+            if (mode == FetcherMode.INTERN && !floodgate) {
+                return null;
+            }
+        }
+
+        for (String variant : nameVariants(name)) {
+            TrackedPlayer record = PlayerManager.get().getByName(variant);
+            if (record != null && record.getUuid() != null && !record.getUuid().isEmpty()) {
+                remember(name, record.getUuid());
+                remember(variant, record.getUuid());
+                return record.getUuid();
+            }
+        }
+
+        // Floodgate/Bedrock names are not Mojang accounts. Hitting api.mojang.com with
+        // ".player" only produces FailedFetch noise and never returns a UUID.
+        if (floodgate) {
+            return null;
+        }
+
+        if (mode == FetcherMode.DISABLED) {
+            return name;
         }
 
         String uuid = null;
@@ -102,6 +138,31 @@ public class UUIDManager {
         }
 
         return uuid;
+    }
+
+    private void remember(String name, String uuid) {
+        if (name != null && uuid != null) {
+            activeUUIDs.put(name.toLowerCase(), uuid);
+        }
+    }
+
+    /**
+     * Floodgate Bedrock names use a leading {@code .} by default and are not Mojang accounts.
+     */
+    public static boolean isFloodgateName(String name) {
+        return name != null && name.startsWith(".") && name.length() > 1;
+    }
+
+    static List<String> nameVariants(String name) {
+        String lower = name.toLowerCase();
+        List<String> variants = new ArrayList<String>();
+        variants.add(lower);
+        if (isFloodgateName(lower)) {
+            variants.add(lower.substring(1));
+        } else if (!lower.isEmpty() && !lower.startsWith(".")) {
+            variants.add("." + lower);
+        }
+        return variants;
     }
 
     /**
@@ -138,8 +199,16 @@ public class UUIDManager {
      * @return the uuid
      */
     public String getUUID(String name) {
-        String inMemoryUuid = getInMemoryUUID(name);
-        return (inMemoryUuid != null) ? inMemoryUuid : getInitialUUID(name);
+        if (name == null || name.isEmpty()) {
+            return null;
+        }
+        for (String variant : nameVariants(name)) {
+            String inMemoryUuid = getInMemoryUUID(variant);
+            if (inMemoryUuid != null) {
+                return inMemoryUuid;
+            }
+        }
+        return getInitialUUID(name);
     }
 
     /**
