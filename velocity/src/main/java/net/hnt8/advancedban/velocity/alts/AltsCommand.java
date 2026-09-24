@@ -162,6 +162,10 @@ public class AltsCommand implements SimpleCommand {
             send(sender, "<red>Banned:</red> " + clickableNameList(banned));
         }
 
+        if (group.getReasons() != null && !group.getReasons().isEmpty()) {
+            send(sender, "<gray>Why:</gray> " + shortReasons(group.getReasons()));
+        }
+
         for (TrackedPlayer member : members) {
             send(sender, memberLine(member, canSeeIp, onlineUuids, fullDate, shortDate));
             send(sender, memberIpLine(member, canSeeIp));
@@ -254,6 +258,17 @@ public class AltsCommand implements SimpleCommand {
                 + "<br>first ip " + IpUtils.display(member.getFirstIp(), canSeeIp)
                 + "<br>last ip " + IpUtils.display(member.getLastIp(), canSeeIp)
                 + "</gray>";
+    }
+
+    private static String shortReasons(List<String> reasons) {
+        StringBuilder out = new StringBuilder();
+        for (int i = 0; i < reasons.size(); i++) {
+            if (i > 0) {
+                out.append("<dark_gray> · </dark_gray>");
+            }
+            out.append("<gray>").append(AltDisplay.hoverSafe(reasons.get(i))).append("</gray>");
+        }
+        return out.toString();
     }
 
     private static String reasonsHover(AltGroup group) {

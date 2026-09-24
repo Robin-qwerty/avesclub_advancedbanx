@@ -27,31 +27,31 @@ public final class AltScorer {
         boolean ipv6 = IpUtils.isIpv6(ip);
         if (ipv6) {
             score = 55;
-            reasons.add("IPv6 address - devices are rarely behind a shared IPv6 the way they are with IPv4 NAT");
+            reasons.add("IPv6 (rarely shared)");
         } else {
             score = 20;
-            reasons.add("IPv4 address - an entire household commonly shares one public IPv4 address");
+            reasons.add("IPv4 (often household)");
         }
 
         int extraMembers = Math.max(0, members.size() - 2);
         if (extraMembers > 0) {
             score += Math.min(extraMembers * 8, 24);
-            reasons.add(members.size() + " accounts have used this address");
+            reasons.add(members.size() + " accounts");
         }
 
         if (anyNamesLookSimilar(members)) {
             score += 15;
-            reasons.add("some of the usernames look related to each other");
+            reasons.add("similar names");
         }
 
         long closestFirstSeenGap = closestFirstSeenGap(members);
         if (closestFirstSeenGap != Long.MAX_VALUE) {
             if (closestFirstSeenGap < 60L * 60 * 1000) {
                 score += 20;
-                reasons.add("two of these accounts first joined the server within an hour of each other");
+                reasons.add("joined within 1h");
             } else if (closestFirstSeenGap < 24L * 60 * 60 * 1000) {
                 score += 10;
-                reasons.add("two of these accounts first joined the server on the same day");
+                reasons.add("joined same day");
             } else if (closestFirstSeenGap < 7L * 24 * 60 * 60 * 1000) {
                 score += 3;
             }
@@ -68,12 +68,12 @@ public final class AltScorer {
         }
         if (anyBanned && anyClean) {
             score += 30;
-            reasons.add("one account on this address is banned while another isn't - possible ban evasion");
+            reasons.add("banned + unbanned mix");
         }
 
         if (anyMemberEvadingIpBan(members)) {
             score += 25;
-            reasons.add("one of these accounts is now using a different IP than an IP that's banned - possible IP-ban evasion");
+            reasons.add("IP-ban evasion?");
         }
 
         int onlineCount = 0;
@@ -84,7 +84,7 @@ public final class AltScorer {
         }
         if (onlineCount >= 2) {
             score -= 25;
-            reasons.add("multiple of these accounts are online at the same time right now, which is more consistent with separate people");
+            reasons.add(onlineCount + " online now (less likely)");
         }
 
         score = Math.max(0, Math.min(100, score));
