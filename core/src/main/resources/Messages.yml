@@ -302,9 +302,9 @@ ChangeReason:
 
 Check:
   Usage: "<red>Usage</red> <dark_gray>»</dark_gray> <gray><italic>/check [Name]</italic></gray>"
-  Header: "<gray>Checking <yellow><italic>%NAME%</italic></yellow> <dark_gray>(%CACHED%)</dark_gray></gray>"
+  Header: "<gray>Checking</gray> <italic>%NAME%</italic> <dark_gray>(%CACHED%)</dark_gray>"
   UUID: "<red>UUID</red> <dark_gray>»</dark_gray> <gray>%UUID% <dark_gray>(%CACHED%)</dark_gray></gray>"
-  IP: "<red>IP</red> <dark_gray>»</dark_gray> <gray>%IP% <dark_gray>(%CACHED%)</dark_gray></gray>"
+  IP: "<red>IP</red> <dark_gray>»</dark_gray> %IP% <dark_gray>(%CACHED%)</dark_gray>"
   Geo: "<red>Country</red> <dark_gray>»</dark_gray> <gray>%LOCATION%</gray>"
   Mute: "<red>Muted</red> <dark_gray>»</dark_gray> <gray>%DURATION%</gray>"
   MuteReason: "  <red>Reason</red> <dark_gray>»</dark_gray> <gray>%REASON%</gray>"
@@ -322,7 +322,7 @@ Check:
   FirstIpBanned: "<red>First IP (%IP%) is banned!</red>"
   FirstIpBanReason: "  <red>Reason</red> <dark_gray>»</dark_gray> <gray>%REASON%</gray>"
   FirstIpBanOperator: "  <red>Banned by</red> <dark_gray>»</dark_gray> <gray>%OPERATOR%</gray>"
-  LinkedBannedAccounts: "<yellow>%COUNT% account(s) sharing this player's IP are banned</yellow> <dark_gray>»</dark_gray> <gray>%NAMES%</gray>"
+  LinkedBannedAccounts: "<gold>%COUNT% account(s) sharing this player's IP are banned</gold> <dark_gray>»</dark_gray> %NAMES%"
   Warn: "<red>Warns</red> <dark_gray>»</dark_gray> <gray>%COUNT%</gray>"
   Note: "<red>Notes</red> <dark_gray>»</dark_gray> <gray>%COUNT%</gray>"
   NotFound: "<red>Sorry we have not been able to find %NAME%"

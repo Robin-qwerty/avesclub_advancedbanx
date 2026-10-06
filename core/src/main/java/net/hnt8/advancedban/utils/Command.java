@@ -380,7 +380,10 @@ public enum Command {
             new BasicTabCompleter(CleanTabCompleter.PLAYER_PLACEHOLDER, "[Name]"),
             input -> {
                 String name = input.getPrimary();
-                boolean isIpAddress = name.matches("^(?:[0-9]{1,3}\\.){3}[0-9]{1,3}$");
+                boolean isIpAddress = IpAddresses.looksLikeIp(name);
+                if (isIpAddress) {
+                    name = IpAddresses.canonical(name);
+                }
                 
                 String uuid;
                 String ip;
@@ -445,7 +448,11 @@ public enum Command {
                 boolean uuidCached = isIpAddress ? false : PunishmentManager.get().isCached(uuid);
 
                 Object sender = input.getSender();
-                MessageManager.sendMessage(sender, "Check.Header", true, "NAME", displayName, "CACHED", nameCached ? cached : notCached);
+                String coloredName = isIpAddress
+                        ? AccountTone.colorIp(displayName, displayName)
+                        : AccountTone.colorName(displayName, uuid, firstIp, "none cashed".equals(ip) ? null : ip);
+                String coloredIp = "none cashed".equals(ip) ? "<gray>" + ip + "</gray>" : AccountTone.colorIp(ip, ip);
+                MessageManager.sendMessage(sender, "Check.Header", true, "NAME", coloredName, "CACHED", nameCached ? cached : notCached);
                 
                 // Only show UUID if it's not an IP address
                 if (!isIpAddress) {
@@ -453,7 +460,7 @@ public enum Command {
                 }
                 
                 if (Universal.get().hasPerms(sender, "avesban.check.ip")) {
-                    MessageManager.sendMessage(sender, "Check.IP", false, "IP", ip, "CACHED", ipCached ? cached : notCached);
+                    MessageManager.sendMessage(sender, "Check.IP", false, "IP", coloredIp, "CACHED", ipCached ? cached : notCached);
                 }
                 MessageManager.sendMessage(sender, "Check.Geo", false, "LOCATION", loc == null ? "failed!" : loc);
                 MessageManager.sendMessage(sender, "Check.Mute", false, "DURATION", mute == null ? "<green>none</green>" : mute.getType().isTemp() ? "<yellow>" + mute.getDuration(false) + "</yellow>" : "<red>perma</red>");
@@ -488,8 +495,10 @@ public enum Command {
                     }
                     if (!linkedBanned.isEmpty()) {
                         String names = linkedBanned.stream()
-                                .map(p -> p.getName() != null ? p.getName() : "unknown")
-                                .collect(java.util.stream.Collectors.joining(", "));
+                                .map(p -> AccountTone.colorName(
+                                        p.getName() != null ? p.getName() : "unknown",
+                                        p.getUuid(), p.getFirstIp(), p.getLastIp()))
+                                .collect(java.util.stream.Collectors.joining("<gray>, </gray>"));
                         MessageManager.sendMessage(sender, "Check.LinkedBannedAccounts", false,
                                 "COUNT", linkedBanned.size() + "", "NAMES", names);
                     }
@@ -505,11 +514,15 @@ public enum Command {
             "check"),
 
     IP_CHECK("avesban.ipcheck",
-            "^(?:[0-9]{1,3}\\.){3}[0-9]{1,3}$",
+            "\\S+",
             new BasicTabCompleter("<IP>"),
             input -> {
-                String ip = input.getPrimary();
+                String ip = IpAddresses.canonical(input.getPrimary());
                 input.next();
+                if (!IpAddresses.looksLikeIp(ip)) {
+                    MessageManager.sendMessage(input.getSender(), "IpCheck.Usage", true);
+                    return;
+                }
 
                 List<TrackedPlayer> players = PlayerManager.get().findByIp(ip);
                 if (players.isEmpty()) {

@@ -24,6 +24,13 @@ public final class AltScorer {
         List<String> reasons = new ArrayList<>();
         int score;
 
+        // One account on an address is not an alt, even if that account has used other IPs
+        // (normal for IPv6 privacy addresses).
+        if (members.size() < 2) {
+            reasons.add("only 1 account");
+            return new ScoreResult(0, "Single account", reasons);
+        }
+
         boolean ipv6 = IpUtils.isIpv6(ip);
         if (ipv6) {
             score = 55;

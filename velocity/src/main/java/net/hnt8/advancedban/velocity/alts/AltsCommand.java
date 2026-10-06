@@ -6,6 +6,7 @@ import net.hnt8.advancedban.MethodInterface;
 import net.hnt8.advancedban.Universal;
 import net.hnt8.advancedban.manager.MessageManager;
 import net.hnt8.advancedban.manager.PunishmentManager;
+import net.hnt8.advancedban.utils.AccountTone;
 import net.hnt8.advancedban.utils.Punishment;
 import net.hnt8.advancedban.utils.TrackedPlayer;
 
@@ -86,13 +87,13 @@ public class AltsCommand implements SimpleCommand {
         for (int i = from; i < to; i++) {
             AltGroup group = groups.get(i);
             int displayIndex = i + 1;
-            String ipDisplay = IpUtils.display(group.getIp(), canSeeIp);
             List<String> banned = bannedAccountNames(group);
             String bannedBit = banned.isEmpty() ? "" : " <red>· " + banned.size() + " banned</red>";
             send(sender, "<hover:show_text:'" + memberListHover(group) + "'>"
                     + "<click:run_command:'/alts view " + displayIndex + "'>"
                     + AltDisplay.scoreSpan(group.getScore(), group.getScore() + "%")
-                    + " <white>" + ipDisplay + "</white> <gray>" + group.getMembers().size() + " acc</gray>"
+                    + " " + paintIp(group.getIp(), canSeeIp)
+                    + " <gray>" + group.getMembers().size() + " acc</gray>"
                     + bannedBit
                     + "</click></hover>");
         }
@@ -148,14 +149,13 @@ public class AltsCommand implements SimpleCommand {
 
         List<TrackedPlayer> members = sortedMembers(group.getMembers(), onlineUuids);
         List<String> banned = bannedAccountNames(group);
-        Punishment ipBan = PunishmentManager.get().getBan(group.getIp());
-        String ipDisplay = IpUtils.display(group.getIp(), canSeeIp);
+        String ipDisplay = paintIp(group.getIp(), canSeeIp);
+        String accounts = members.size() + " account" + (members.size() == 1 ? "" : "s");
 
         send(sender, "<hover:show_text:'" + reasonsHover(group) + "'>"
                 + AltDisplay.scoreSpan(group.getScore(), group.getScore() + "%")
-                + "</hover> <white>" + ipDisplay + "</white>"
-                + AltDisplay.ipBanTag(ipBan != null)
-                + " <gray>" + members.size() + " accounts</gray>"
+                + "</hover> " + ipDisplay
+                + " <gray>" + accounts + "</gray>"
                 + " <dark_gray>" + AltDisplay.hoverSafe(group.getBand()) + "</dark_gray>");
 
         if (!banned.isEmpty()) {
@@ -200,8 +200,8 @@ public class AltsCommand implements SimpleCommand {
         boolean banned = isAccountBanned(member);
         boolean muted = member.getUuid() != null && PunishmentManager.get().isMuted(member.getUuid());
         boolean online = isOnline(member, onlineUuids);
-        String nameColor = banned ? "red" : "white";
-        String status = online ? "<green>● online</green>" : "<dark_gray>○ offline</dark_gray>";
+        String nameColor = AccountTone.nameColor(member.getUuid(), member.getFirstIp(), member.getLastIp());
+        String status = online ? "<green>●</green>" : "<dark_gray>○</dark_gray>";
 
         StringBuilder line = new StringBuilder();
         line.append(status).append(' ');
@@ -232,21 +232,28 @@ public class AltsCommand implements SimpleCommand {
         String firstIp = member.getFirstIp();
         String lastIp = member.getLastIp();
         boolean same = firstIp != null && lastIp != null && firstIp.equalsIgnoreCase(lastIp);
-        Punishment lastIpBan = lastIp != null ? PunishmentManager.get().getBan(lastIp) : null;
-        Punishment firstIpBan = firstIp != null ? PunishmentManager.get().getBan(firstIp) : null;
 
         StringBuilder line = new StringBuilder("  ");
         if (same || lastIp == null) {
-            String ip = lastIp != null ? lastIp : firstIp;
-            Punishment ipBan = lastIp != null ? lastIpBan : firstIpBan;
-            line.append("<gray>ip</gray> ").append(IpUtils.display(ip, canSeeIp)).append(AltDisplay.ipBanTag(ipBan != null));
+            line.append("<gray>ip</gray> ").append(paintIp(lastIp != null ? lastIp : firstIp, canSeeIp));
         } else if (firstIp == null) {
-            line.append("<gray>last-ip</gray> ").append(IpUtils.display(lastIp, canSeeIp)).append(AltDisplay.ipBanTag(lastIpBan != null));
+            line.append("<gray>last-ip</gray> ").append(paintIp(lastIp, canSeeIp));
         } else {
-            line.append("<gray>first-ip</gray> ").append(IpUtils.display(firstIp, canSeeIp)).append(AltDisplay.ipBanTag(firstIpBan != null));
-            line.append(" <gray>last-ip</gray> ").append(IpUtils.display(lastIp, canSeeIp)).append(AltDisplay.ipBanTag(lastIpBan != null));
+            line.append("<gray>first-ip</gray> ").append(paintIp(firstIp, canSeeIp));
+            line.append(" <gray>last-ip</gray> ").append(paintIp(lastIp, canSeeIp));
         }
         return line.toString();
+    }
+
+    private static String paintIp(String ip, boolean canSeeIp) {
+        if (ip == null) {
+            return "<gray>unknown</gray>";
+        }
+        String shown = AccountTone.colorIp(IpUtils.display(ip, canSeeIp), ip);
+        if (PunishmentManager.get().getBan(ip) != null) {
+            shown += AltDisplay.ipBanTag(true);
+        }
+        return shown;
     }
 
     private static String memberHover(TrackedPlayer member, boolean canSeeIp, SimpleDateFormat fullDate) {

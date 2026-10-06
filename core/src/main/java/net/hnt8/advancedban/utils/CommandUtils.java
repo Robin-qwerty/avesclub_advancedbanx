@@ -3,6 +3,7 @@ package net.hnt8.advancedban.utils;
 import net.hnt8.advancedban.MethodInterface;
 import net.hnt8.advancedban.Universal;
 import net.hnt8.advancedban.manager.MessageManager;
+import net.hnt8.advancedban.manager.PlayerManager;
 import net.hnt8.advancedban.manager.PunishmentManager;
 import net.hnt8.advancedban.manager.UUIDManager;
 
@@ -28,18 +29,43 @@ public class CommandUtils {
 
     // Removes name/ip argument and returns ip (null if failed)
     public static String processIP(Command.CommandInput input) {
+        String raw = input.getPrimary();
         String name = input.getPrimaryData();
         input.next();
-        if (name.matches("^(?:[0-9]{1,3}\\.){3}[0-9]{1,3}$")) {
-            return name;
+        if (IpAddresses.looksLikeIp(raw)) {
+            return IpAddresses.canonical(raw);
         }
-		String ip = Universal.get().getIps().get(name);
+        String ip = Universal.get().getIps().get(name);
+        if (ip == null) {
+            TrackedPlayer record = findTracked(name);
+            if (record != null) {
+                ip = record.getLastIp() != null ? record.getLastIp() : record.getFirstIp();
+            }
+        }
 
-		if (ip == null)
-		    MessageManager.sendMessage(input.getSender(), "Ipban.IpNotCashed",
-		            true, "NAME", name);
+        if (ip == null) {
+            MessageManager.sendMessage(input.getSender(), "Ipban.IpNotCashed",
+                    true, "NAME", raw != null ? raw : name);
+        }
 
-		return ip;
+        return ip;
+    }
+
+    private static TrackedPlayer findTracked(String name) {
+        if (name == null || name.isEmpty()) {
+            return null;
+        }
+        TrackedPlayer record = PlayerManager.get().getByName(name);
+        if (record != null) {
+            return record;
+        }
+        if (name.startsWith(".") && name.length() > 1) {
+            return PlayerManager.get().getByName(name.substring(1));
+        }
+        if (!name.startsWith(".")) {
+            return PlayerManager.get().getByName("." + name);
+        }
+        return null;
     }
 
     // Builds reason from remaining arguments (null if failed)
