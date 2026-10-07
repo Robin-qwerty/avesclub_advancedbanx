@@ -41,9 +41,9 @@ public class Punishment {
         this.id = id;
     }
 
-    public static void create(String name, String target, String reason, String operator, PunishmentType type, Long end,
+    public static boolean create(String name, String target, String reason, String operator, PunishmentType type, Long end,
                               String calculation, String server, String targetServer, boolean silent) {
-        new Punishment(name, target, reason, operator, end == -1 ? type.getPermanent() : type,
+        return new Punishment(name, target, reason, operator, end == -1 ? type.getPermanent() : type,
                 TimeManager.getTime(), end, calculation, server, targetServer, -1)
                 .create(silent);
     }
@@ -65,26 +65,31 @@ public class Punishment {
         create(false);
     }
 
-    public void create(boolean silent) {
+    public boolean create(boolean silent) {
         if (id != -1) {
             Universal.get().getLogger().severe("!! Failed! AB tried to overwrite the punishment:");
             Universal.get().getLogger().severe("!! Failed at: " + this);
-            return;
+            return false;
         }
 
         if (uuid == null) {
             Universal.get().getLogger().severe("!! Failed! AB has not saved the " + getType().getName() + " because there is no fetched UUID");
             Universal.get().getLogger().severe("!! Failed at: " + this);
-            return;
+            return false;
         }
 
         final int cWarnings = getType().getBasic() == PunishmentType.WARNING ? (PunishmentManager.get().getCurrentWarns(getUuid()) + 1) : 0;
 
-        DatabaseManager.get().executeStatement(SQLQuery.INSERT_PUNISHMENT_HISTORY, getName(), getUuid(), getReason(), getOperator(), getType().name(), getStart(), getEnd(), getCalculation(), getServer(), getTargetServer());
+        DatabaseManager.get().executeUpdate(SQLQuery.INSERT_PUNISHMENT_HISTORY, getName(), getUuid(), getReason(), getOperator(), getType().name(), getStart(), getEnd(), getCalculation(), getServer(), getTargetServer());
 
         if (getType() != PunishmentType.KICK) {
+            int inserted = DatabaseManager.get().executeUpdate(SQLQuery.INSERT_PUNISHMENT, getName(), getUuid(), getReason(), getOperator(), getType().name(), getStart(), getEnd(), getCalculation(), getServer(), getTargetServer());
+            if (inserted <= 0) {
+                Universal.get().getLogger().severe("!! Failed to save punishment. It was not applied.");
+                Universal.get().getLogger().severe("!! Failed at: " + this);
+                return false;
+            }
             try {
-                DatabaseManager.get().executeStatement(SQLQuery.INSERT_PUNISHMENT, getName(), getUuid(), getReason(), getOperator(), getType().name(), getStart(), getEnd(), getCalculation(), getServer(), getTargetServer());
                 try (ResultSet rs = DatabaseManager.get().executeResultStatement(SQLQuery.SELECT_EXACT_PUNISHMENT, getUuid(), getStart(), getType().name())) {
                     if (rs.next()) {
                         id = rs.getInt("id");
@@ -152,6 +157,7 @@ public class Punishment {
                 });
             }
         }
+        return true;
     }
 
     public void updateReason(String reason) {

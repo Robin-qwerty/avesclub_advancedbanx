@@ -117,6 +117,7 @@ public class DatabaseManager {
         // Runs on both MySQL and HSQLDB so databases created before the firstIp
         // column existed get upgraded too, not just MySQL ones.
         addFirstIpColumnIfMissing();
+        widenPunishmentIpColumns();
         if (useMySQL) {
             // Fix LONG columns to BIGINT if they exist (for existing databases)
             fixLongColumnsToBigInt();
@@ -397,6 +398,58 @@ public class DatabaseManager {
             Universal.get().getLogger().warning("Failed to add targetServer column: " + ex.getMessage());
             Universal.get().debugSqlException(ex);
         }
+    }
+
+    /**
+     * IP bans store the address in both name and uuid. Those columns were sized for
+     * a Minecraft name (16) and a UUID (35), which rejects a full IPv6 (39 characters).
+     */
+    private void widenPunishmentIpColumns() {
+        widenColumn("Punishments", "name", 45);
+        widenColumn("Punishments", "uuid", 45);
+        widenColumn("PunishmentHistory", "name", 45);
+        widenColumn("PunishmentHistory", "uuid", 45);
+    }
+
+    private void widenColumn(String table, String column, int minChars) {
+        try (Connection connection = dataSource.getConnection()) {
+            int current = columnCharLength(connection, table, column);
+            if (current < 0 || current >= minChars) {
+                return;
+            }
+            Universal.get().getLogger().info("Widening " + table + "." + column + " from VARCHAR(" + current + ") to VARCHAR(" + minChars + ") so IPv6 bans fit.");
+            String sql = useMySQL
+                    ? "ALTER TABLE `" + table + "` MODIFY COLUMN `" + column + "` VARCHAR(" + minChars + ") NULL DEFAULT NULL"
+                    : "ALTER TABLE " + table + " ALTER COLUMN " + column + " SET DATA TYPE VARCHAR(" + minChars + ")";
+            try (Statement stmt = connection.createStatement()) {
+                stmt.execute(sql);
+            }
+        } catch (SQLException ex) {
+            Universal.get().getLogger().warning("Failed to widen " + table + "." + column + ": " + ex.getMessage());
+            Universal.get().debugSqlException(ex);
+        }
+    }
+
+    private int columnCharLength(Connection connection, String table, String column) throws SQLException {
+        if (useMySQL) {
+            try (PreparedStatement ps = connection.prepareStatement(
+                    "SELECT CHARACTER_MAXIMUM_LENGTH FROM INFORMATION_SCHEMA.COLUMNS "
+                            + "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?")) {
+                ps.setString(1, table);
+                ps.setString(2, column);
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (rs.next()) {
+                        return rs.getInt(1);
+                    }
+                }
+            }
+        }
+        try (ResultSet rs = connection.getMetaData().getColumns(connection.getCatalog(), null, table, column)) {
+            if (rs.next()) {
+                return rs.getInt("COLUMN_SIZE");
+            }
+        }
+        return -1;
     }
 
     /**

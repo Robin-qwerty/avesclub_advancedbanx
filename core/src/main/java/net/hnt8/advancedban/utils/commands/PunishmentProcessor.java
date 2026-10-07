@@ -78,7 +78,10 @@ public class PunishmentProcessor implements Consumer<Command.CommandInput> {
         MethodInterface mi = Universal.get().getMethods();
         String operator = mi.getName(input.getSender());
         String server = mi.getServerName(input.getSender());
-        Punishment.create(name, target, reason, operator, type, end, timeTemplate, server, targetServer, silent);
+        if (!Punishment.create(name, target, reason, operator, type, end, timeTemplate, server, targetServer, silent)) {
+            mi.sendMessage(input.getSender(), "<red>Could not save that punishment. Check the console.</red>");
+            return;
+        }
 
         MessageManager.sendMessage(input.getSender(), type.getBasic().getName() + ".Done",
                 true, "NAME", name);
