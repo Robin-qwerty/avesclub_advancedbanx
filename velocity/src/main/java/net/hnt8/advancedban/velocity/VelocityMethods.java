@@ -11,13 +11,13 @@ import net.hnt8.advancedban.MethodInterface;
 import net.hnt8.advancedban.Universal;
 import net.hnt8.advancedban.manager.PunishmentManager;
 import net.hnt8.advancedban.manager.UUIDManager;
+import net.hnt8.advancedban.utils.LegacyFormat;
 import net.hnt8.advancedban.utils.Permissionable;
 import net.hnt8.advancedban.utils.Punishment;
 import net.hnt8.advancedban.utils.ConfigMigrator;
 import net.hnt8.advancedban.utils.tabcompletion.TabCompleter;
 import net.hnt8.advancedban.utils.YamlColonQuoter;
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.TextReplacementConfig;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.yaml.snakeyaml.Yaml;
 
@@ -231,16 +231,18 @@ public class VelocityMethods implements MethodInterface {
         if (!(player instanceof CommandSource)) {
             return;
         }
+        String safe = LegacyFormat.strip(msg);
         if (player instanceof Player && BedrockCompat.isBedrock((Player) player)) {
-            ((CommandSource) player).sendMessage(Component.text(BedrockCompat.toPlainText(msg)));
+            ((CommandSource) player).sendMessage(Component.text(BedrockCompat.toPlainText(safe)));
             return;
         }
-        TextReplacementConfig replacementConfig = TextReplacementConfig.builder()
-                .matchLiteral("&")
-                .replacement("§")
-                .build();
-        Component component = MiniMessage.miniMessage().deserialize(msg).replaceText(replacementConfig);
-        ((CommandSource) player).sendMessage(component);
+        try {
+            Component component = MiniMessage.miniMessage().deserialize(safe);
+            ((CommandSource) player).sendMessage(component);
+        } catch (Exception ex) {
+            getLogger().warning("Could not parse a message, sending it as plain text: " + ex.getMessage());
+            ((CommandSource) player).sendMessage(Component.text(safe.replaceAll("<[^>]*>", "")));
+        }
     }
 
     @Override

@@ -2,6 +2,7 @@ package net.hnt8.advancedban.manager;
 
 import net.hnt8.advancedban.MethodInterface;
 import net.hnt8.advancedban.Universal;
+import net.hnt8.advancedban.utils.LegacyFormat;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -37,7 +38,7 @@ public class MessageManager {
                     + "\n  - Delete the message file and restart the server");
         } else {
             String preTranslated = replace(str, parameters);
-            str = preTranslated.replace('&', '§');
+            str = preTranslated;
         }
         return str;
     }
@@ -82,8 +83,7 @@ public class MessageManager {
             List<String> list = new ArrayList<>();
             for (String str : mi.getStringList(file, path)) {
                 String preTranslated = replace(str, parameters);
-                
-                list.add(preTranslated.replace('&', '§'));
+                list.add(preTranslated);
             }
             return list;
         }
@@ -121,7 +121,8 @@ public class MessageManager {
 
     private static String replace(String str, String... parameters) {
         for (int i = 0; i < parameters.length - 1; i = i + 2) {
-            str = str.replaceAll("%" + parameters[i] + "%", parameters[i + 1]);
+            String value = LegacyFormat.strip(parameters[i + 1] == null ? "" : parameters[i + 1]);
+            str = str.replace("%" + parameters[i] + "%", value);
         }
         return str;
     }

@@ -104,7 +104,11 @@ public class Punishment {
         }
 
         if (!silent) {
-            announce(cWarnings);
+            try {
+                announce(cWarnings);
+            } catch (Exception ex) {
+                Universal.get().getLogger().warning("Could not send the punishment notification: " + ex.getMessage());
+            }
         }
 
         if (mi.isOnline(getName())) {
