@@ -379,25 +379,48 @@ public enum Command {
             "\\S+",
             new BasicTabCompleter(CleanTabCompleter.PLAYER_PLACEHOLDER, "[Name]"),
             input -> {
-                String name = input.getPrimary();
-                boolean isIpAddress = IpAddresses.looksLikeIp(name);
+                String inputToken = input.getPrimary();
+                boolean isIpAddress = IpAddresses.looksLikeIp(inputToken);
+                String asUuid = isIpAddress ? null : UUIDManager.normalizeUuid(inputToken);
                 if (isIpAddress) {
-                    name = IpAddresses.canonical(name);
+                    inputToken = IpAddresses.canonical(inputToken);
                 }
                 
                 String uuid;
                 String ip;
                 String firstIp = null;
                 String displayName;
+                String name;
 
                 if (isIpAddress) {
                     // Input is an IP address - use it directly
-                    ip = name;
-                    uuid = name; // For IP bans, the UUID field stores the IP
-                    displayName = name;
+                    ip = inputToken;
+                    uuid = inputToken; // For IP bans, the UUID field stores the IP
+                    displayName = inputToken;
+                    name = inputToken;
                     input.next();
+                } else if (asUuid != null) {
+                    input.next();
+                    uuid = asUuid;
+                    TrackedPlayer record = PlayerManager.get().getByUuid(uuid);
+                    String resolvedName = UUIDManager.get().findName(uuid);
+                    displayName = resolvedName != null ? resolvedName : "unknown";
+                    name = displayName;
+                    if (record != null) {
+                        firstIp = record.getFirstIp();
+                        ip = record.getLastIp();
+                    } else {
+                        ip = null;
+                    }
+                    if (ip == null && resolvedName != null) {
+                        ip = Universal.get().getIps().get(resolvedName.toLowerCase());
+                    }
+                    if (ip == null) {
+                        ip = "none cashed";
+                    }
                 } else {
                     // Input is a player name - fetch UUID
+                    name = inputToken;
                     uuid = processName(input);
                     if (uuid == null)
                         return;

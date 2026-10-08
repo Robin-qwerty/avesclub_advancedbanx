@@ -193,6 +193,64 @@ public class UUIDManager {
     }
 
     /**
+     * Accepts a dashed or plain UUID and returns the 32-character form stored in the database,
+     * or null when the text is not a UUID.
+     */
+    public static String normalizeUuid(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        if (trimmed.length() == 36 && trimmed.charAt(8) == '-' && trimmed.charAt(13) == '-'
+                && trimmed.charAt(18) == '-' && trimmed.charAt(23) == '-') {
+            try {
+                return UUID.fromString(trimmed).toString().replace("-", "");
+            } catch (IllegalArgumentException ex) {
+                return null;
+            }
+        }
+        if (trimmed.length() == 32 && trimmed.matches("[0-9a-fA-F]{32}")) {
+            return trimmed.toLowerCase();
+        }
+        return null;
+    }
+
+    /**
+     * Name for a stored UUID: tracked player record, then the in-memory cache, then Mojang.
+     */
+    public String findName(String undashedUuid) {
+        if (undashedUuid == null || undashedUuid.isEmpty()) {
+            return null;
+        }
+        TrackedPlayer record = PlayerManager.get().getByUuid(undashedUuid);
+        if (record != null && record.getName() != null && !record.getName().isEmpty()) {
+            return record.getName();
+        }
+        String memory = getInMemoryName(undashedUuid);
+        if (memory != null) {
+            return memory;
+        }
+        String dashed = undashedUuid.replaceFirst(
+                "(\\p{XDigit}{8})(\\p{XDigit}{4})(\\p{XDigit}{4})(\\p{XDigit}{4})(\\p{XDigit}{12})",
+                "$1-$2-$3-$4-$5");
+        try {
+            String online = mi().getName(dashed);
+            if (online != null && !online.isEmpty()) {
+                return online;
+            }
+        } catch (RuntimeException ignored) {
+            // Platform lookup expects a dashed UUID and may reject anything else.
+        }
+        try (Scanner scanner = new Scanner(new URL("https://api.mojang.com/user/profiles/" + undashedUuid + "/names").openStream(), "UTF-8")) {
+            String body = scanner.useDelimiter("\\A").next();
+            body = body.substring(body.lastIndexOf('{'), body.lastIndexOf('}') + 1);
+            return mi().parseJSON(body, "name");
+        } catch (Exception ignored) {
+            return null;
+        }
+    }
+
+    /**
      * Get the uuid to a name.
      *
      * @param name the name

@@ -301,7 +301,7 @@ ChangeReason:
   NotFound: "<red>Sorry we have not been able to find this punishment</red>"
 
 Check:
-  Usage: "<red>Usage</red> <dark_gray>»</dark_gray> <gray><italic>/check [Name]</italic></gray>"
+  Usage: "<red>Usage</red> <dark_gray>»</dark_gray> <gray><italic>/check [Name/UUID]</italic></gray>"
   Header: "<gray>Checking</gray> <italic>%NAME%</italic> <dark_gray>(%CACHED%)</dark_gray>"
   UUID: "<red>UUID</red> <dark_gray>»</dark_gray> <gray>%UUID% <dark_gray>(%CACHED%)</dark_gray></gray>"
   IP: "<red>IP</red> <dark_gray>»</dark_gray> %IP% <dark_gray>(%CACHED%)</dark_gray>"
